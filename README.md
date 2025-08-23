@@ -52,17 +52,13 @@ validate(input, string());
 // input is typed as string
 
 // With rules
-validate(
-  input,
-  string({ minLength: 3, maxLength: 50, pattern: /^[a-zA-Z]+$/ })
-);
+validate(input, string({ minLength: 3, maxLength: 50 }));
 ```
 
 **Rules:**
 
 - `minLength?: number` - Minimum string length
 - `maxLength?: number` - Maximum string length
-- `pattern?: RegExp` - Regular expression the string must match
 
 #### `number()`
 

@@ -51,19 +51,24 @@ describe("constant", () => {
       expect(decoder.schema).toEqual({ type: "constant", value: "test" });
     });
 
-    it("should throw DecoderError with correct schema, rules and path for non-string violation", () => {
+    it("should throw DecoderError with full details for non-string violation", () => {
       const decoder = constant("test");
       try {
         decoder.unstable_decode("actual");
         expect.fail();
       } catch (error) {
         expect(error).toBeInstanceOf(DecoderError);
-        expect(error).toEqual(
-          expect.objectContaining({
-            schema: { type: "constant", value: "test" },
-            rules: {},
-            path: { type: "schema", data: "actual" },
-          })
+        expect((error as DecoderError).path).toEqual({
+          type: "schema",
+          data: "actual",
+        });
+        expect((error as DecoderError).schema).toEqual({
+          type: "constant",
+          value: "test",
+        });
+        expect((error as DecoderError).rules).toEqual({});
+        expect((error as DecoderError).message).toBe(
+          'Validation failed due to schema mismatch; expected schema: {"type":"constant","value":"test"}; received value: "actual"'
         );
       }
     });
@@ -150,19 +155,24 @@ describe("constant", () => {
       expect(decoder.schema).toEqual({ type: "constant", value: "42" });
     });
 
-    it("should throw DecoderError with correct schema, rules and path for non-number violation", () => {
+    it("should throw DecoderError with full details for non-number violation", () => {
       const decoder = constant(42);
       try {
         decoder.unstable_decode("actual");
         expect.fail();
       } catch (error) {
         expect(error).toBeInstanceOf(DecoderError);
-        expect(error).toEqual(
-          expect.objectContaining({
-            schema: { type: "constant", value: "42" },
-            rules: {},
-            path: { type: "schema", data: "actual" },
-          })
+        expect((error as DecoderError).path).toEqual({
+          type: "schema",
+          data: "actual",
+        });
+        expect((error as DecoderError).schema).toEqual({
+          type: "constant",
+          value: "42",
+        });
+        expect((error as DecoderError).rules).toEqual({});
+        expect((error as DecoderError).message).toBe(
+          'Validation failed due to schema mismatch; expected schema: {"type":"constant","value":"42"}; received value: "actual"'
         );
       }
     });
@@ -216,19 +226,24 @@ describe("constant", () => {
       expect(falseDecoder.schema).toEqual({ type: "constant", value: "false" });
     });
 
-    it("should throw DecoderError with correct schema, rules and path for non-boolean violation", () => {
+    it("should throw DecoderError with full details for non-boolean violation", () => {
       const decoder = constant(true);
       try {
         decoder.unstable_decode("actual");
         expect.fail();
       } catch (error) {
         expect(error).toBeInstanceOf(DecoderError);
-        expect(error).toEqual(
-          expect.objectContaining({
-            schema: { type: "constant", value: "true" },
-            rules: {},
-            path: { type: "schema", data: "actual" },
-          })
+        expect((error as DecoderError).path).toEqual({
+          type: "schema",
+          data: "actual",
+        });
+        expect((error as DecoderError).schema).toEqual({
+          type: "constant",
+          value: "true",
+        });
+        expect((error as DecoderError).rules).toEqual({});
+        expect((error as DecoderError).message).toBe(
+          'Validation failed due to schema mismatch; expected schema: {"type":"constant","value":"true"}; received value: "actual"'
         );
       }
     });
@@ -283,19 +298,24 @@ describe("constant", () => {
       });
     });
 
-    it("should throw DecoderError with correct schema, rules and path for non-symbol violation", () => {
+    it("should throw DecoderError with full details for non-symbol violation", () => {
       const decoder = constant(Symbol("test"));
       try {
         decoder.unstable_decode("actual");
         expect.fail();
       } catch (error) {
         expect(error).toBeInstanceOf(DecoderError);
-        expect(error).toEqual(
-          expect.objectContaining({
-            schema: { type: "constant", value: "Symbol(test)" },
-            rules: {},
-            path: { type: "schema", data: "actual" },
-          })
+        expect((error as DecoderError).path).toEqual({
+          type: "schema",
+          data: "actual",
+        });
+        expect((error as DecoderError).schema).toEqual({
+          type: "constant",
+          value: "Symbol(test)",
+        });
+        expect((error as DecoderError).rules).toEqual({});
+        expect((error as DecoderError).message).toBe(
+          'Validation failed due to schema mismatch; expected schema: {"type":"constant","value":"Symbol(test)"}; received value: "actual"'
         );
       }
     });
@@ -325,19 +345,24 @@ describe("constant", () => {
       expect(decoder.schema).toEqual({ type: "constant", value: "null" });
     });
 
-    it("should throw DecoderError with correct schema, rules and path for non-null violation", () => {
+    it("should throw DecoderError with full details for non-null violation", () => {
       const decoder = constant(null);
       try {
         decoder.unstable_decode("actual");
         expect.fail();
       } catch (error) {
         expect(error).toBeInstanceOf(DecoderError);
-        expect(error).toEqual(
-          expect.objectContaining({
-            schema: { type: "constant", value: "null" },
-            rules: {},
-            path: { type: "schema", data: "actual" },
-          })
+        expect((error as DecoderError).path).toEqual({
+          type: "schema",
+          data: "actual",
+        });
+        expect((error as DecoderError).schema).toEqual({
+          type: "constant",
+          value: "null",
+        });
+        expect((error as DecoderError).rules).toEqual({});
+        expect((error as DecoderError).message).toBe(
+          'Validation failed due to schema mismatch; expected schema: {"type":"constant","value":"null"}; received value: "actual"'
         );
       }
     });
@@ -367,19 +392,24 @@ describe("constant", () => {
       expect(decoder.schema).toEqual({ type: "constant", value: "undefined" });
     });
 
-    it("should throw DecoderError with correct schema, rules and path for non-undefined violation", () => {
+    it("should throw DecoderError with full details for non-undefined violation", () => {
       const decoder = constant(undefined);
       try {
         decoder.unstable_decode("actual");
         expect.fail();
       } catch (error) {
         expect(error).toBeInstanceOf(DecoderError);
-        expect(error).toEqual(
-          expect.objectContaining({
-            schema: { type: "constant", value: "undefined" },
-            rules: {},
-            path: { type: "schema", data: "actual" },
-          })
+        expect((error as DecoderError).path).toEqual({
+          type: "schema",
+          data: "actual",
+        });
+        expect((error as DecoderError).schema).toEqual({
+          type: "constant",
+          value: "undefined",
+        });
+        expect((error as DecoderError).rules).toEqual({});
+        expect((error as DecoderError).message).toBe(
+          'Validation failed due to schema mismatch; expected schema: {"type":"constant","value":"undefined"}; received value: "actual"'
         );
       }
     });

@@ -67,27 +67,24 @@ export type InferOutputOf<D extends Decoder<any, any, any>> = D extends Decoder<
  *
  * @param rules.minLength - Minimum allowed string length
  * @param rules.maxLength - Maximum allowed string length
- * @param rules.pattern - Regular expression pattern the string must match
  * @returns A decoder for string values
  */
 export function string(): Decoder<string, { type: "string" }>;
 export function string(rules?: {
   minLength?: number;
   maxLength?: number;
-  pattern?: RegExp;
 }): Decoder<
   string,
   { type: "string" },
-  { minLength?: number; maxLength?: number; pattern?: RegExp }
+  { minLength?: number; maxLength?: number }
 >;
 export function string(rules?: {
   minLength?: number;
   maxLength?: number;
-  pattern?: RegExp;
 }): Decoder<
   string,
   { type: "string" },
-  { minLength?: number; maxLength?: number; pattern?: RegExp }
+  { minLength?: number; maxLength?: number }
 > {
   return {
     unstable_decode(value: unknown): string {
@@ -116,22 +113,12 @@ export function string(rules?: {
         });
       }
 
-      const pattern = rules?.pattern;
-      if (pattern !== undefined && !pattern.test(value)) {
-        throw new DecoderError(this.schema, this.rules, {
-          type: "rule",
-          rule: "pattern",
-          data: value,
-        });
-      }
-
       return value as string;
     },
     schema: { type: "string" },
     rules: {
       minLength: rules?.minLength,
       maxLength: rules?.maxLength,
-      pattern: rules?.pattern,
     },
   };
 }
@@ -316,7 +303,7 @@ export function array<D extends Decoder<any, any, any>>(
           decoder.unstable_decode(value[i]);
         } catch (err) {
           if (err instanceof DecoderError) {
-            throw new DecoderError(this.schema, this.rules, {
+            throw new DecoderError(err.schema, err.rules, {
               type: "item",
               index: i,
               data: value,
@@ -404,7 +391,7 @@ export function object<T extends Record<string, Decoder<any, any, any>>>(
           decoder.unstable_decode((value as any)[key]);
         } catch (err) {
           if (err instanceof DecoderError) {
-            throw new DecoderError(this.schema, this.rules, {
+            throw new DecoderError(err.schema, err.rules, {
               type: "property",
               property: key,
               path: err.path,
@@ -490,6 +477,7 @@ export function or<D extends readonly Decoder<any, any, any>[]>(
         try {
           return decoder.unstable_decode(value);
         } catch (err) {
+          // If the error is not a DecoderError, rethrow it
           if (!(err instanceof DecoderError)) throw err;
         }
       }
@@ -537,6 +525,8 @@ export function null_(): Decoder<null, { type: "null" }, {}> {
 
 /**
  * Creates a decoder that validates undefined values. Only accepts the literal undefined value.
+ *
+ * @returns A decoder for undefined values
  */
 export function undefined_(): Decoder<undefined, { type: "undefined" }, {}> {
   return {
@@ -685,10 +675,12 @@ function formatError(
     msg += ` due to rule violation: ${String(leafPath.rule)};`;
   }
 
+  // TODO: Switch to a safe stringify function or util.inspect to handle BigInt, Symbol, functions, and circular structures.
   msg += ` expected schema: ${JSON.stringify(schema)}`;
-  if (Object.keys(rules).length > 0) {
+  if (Object.keys(rules).filter((key) => rules[key] !== undefined).length > 0) {
     msg += ` with rules: ${JSON.stringify(rules)}`;
   }
+  msg += `; received value: ${JSON.stringify(leafPath.data)}`;
 
   return msg;
 }

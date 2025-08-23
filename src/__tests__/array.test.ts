@@ -92,22 +92,21 @@ describe("array", () => {
       expect(decoder.unstable_decode(arr)).toBe(arr);
     });
 
-    it("should throw DecoderError with correct schema, rules and path for non-array violation", () => {
+    it("should throw DecoderError with full details for non-array violation", () => {
       const decoder = array();
       try {
         decoder.unstable_decode("not an array");
         expect.fail();
       } catch (error) {
         expect(error).toBeInstanceOf(DecoderError);
-        expect(error).toEqual(
-          expect.objectContaining({
-            schema: { type: "array" },
-            rules: {},
-            path: {
-              type: "schema",
-              data: "not an array",
-            },
-          })
+        expect((error as DecoderError).path).toEqual({
+          type: "schema",
+          data: "not an array",
+        });
+        expect((error as DecoderError).schema).toEqual({ type: "array" });
+        expect((error as DecoderError).rules).toEqual({});
+        expect((error as DecoderError).message).toBe(
+          'Validation failed due to schema mismatch; expected schema: {"type":"array"}; received value: "not an array"'
         );
       }
     });
@@ -115,6 +114,63 @@ describe("array", () => {
 
   describe("rules", () => {
     describe("minLength", () => {
+      it("should work with array(rules) signature without item decoder", () => {
+        const decoder = array({ minLength: 3 });
+
+        // Should accept any array with at least 3 items
+        expect(decoder.unstable_decode([1, 2, 3])).toEqual([1, 2, 3]);
+        expect(decoder.unstable_decode(["a", "b", "c", "d"])).toEqual([
+          "a",
+          "b",
+          "c",
+          "d",
+        ]);
+        expect(decoder.unstable_decode([true, false, null, undefined])).toEqual(
+          [true, false, null, undefined]
+        );
+        expect(decoder.unstable_decode([{}, [], 42, "mixed"])).toEqual([
+          {},
+          [],
+          42,
+          "mixed",
+        ]);
+
+        // Should reject arrays shorter than minimum length
+        expect(() => decoder.unstable_decode([])).toThrowError(DecoderError);
+        expect(() => decoder.unstable_decode([1])).toThrowError(DecoderError);
+        expect(() => decoder.unstable_decode([1, 2])).toThrowError(
+          DecoderError
+        );
+
+        // Should include schema without item
+        expect(decoder.schema).toEqual({ type: "array", item: undefined });
+        expect(decoder.rules).toEqual({ minLength: 3 });
+      });
+
+      it("should throw DecoderError with correct details for array(rules) signature", () => {
+        const decoder = array({ minLength: 3 });
+
+        try {
+          decoder.unstable_decode([1, 2]);
+          expect.fail();
+        } catch (error) {
+          expect(error).toBeInstanceOf(DecoderError);
+          expect((error as DecoderError).path).toEqual({
+            type: "rule",
+            rule: "minLength",
+            data: [1, 2],
+          });
+          expect((error as DecoderError).schema).toEqual({
+            type: "array",
+            item: undefined,
+          });
+          expect((error as DecoderError).rules).toEqual({ minLength: 3 });
+          expect((error as DecoderError).message).toBe(
+            'Validation failed due to rule violation: minLength; expected schema: {"type":"array"} with rules: {"minLength":3}; received value: [1,2]'
+          );
+        }
+      });
+
       it("should accept arrays meeting minimum length", () => {
         const decoder = array({ minLength: 3 });
 
@@ -163,7 +219,7 @@ describe("array", () => {
         });
       });
 
-      it("should throw DecoderError with correct schema, rules and path for minLength violation", () => {
+      it("should throw DecoderError with full details for minLength violation", () => {
         const decoder = array({ minLength: 5 });
 
         try {
@@ -171,16 +227,15 @@ describe("array", () => {
           expect.fail();
         } catch (error) {
           expect(error).toBeInstanceOf(DecoderError);
-          expect(error).toEqual(
-            expect.objectContaining({
-              schema: { type: "array" },
-              rules: { minLength: 5 },
-              path: {
-                type: "rule",
-                rule: "minLength",
-                data: [1, 2],
-              },
-            })
+          expect((error as DecoderError).path).toEqual({
+            type: "rule",
+            rule: "minLength",
+            data: [1, 2],
+          });
+          expect((error as DecoderError).schema).toEqual({ type: "array" });
+          expect((error as DecoderError).rules).toEqual({ minLength: 5 });
+          expect((error as DecoderError).message).toBe(
+            'Validation failed due to rule violation: minLength; expected schema: {"type":"array"} with rules: {"minLength":5}; received value: [1,2]'
           );
         }
       });
@@ -248,7 +303,7 @@ describe("array", () => {
       );
     });
 
-    it("should throw DecoderError with correct schema, rules and path for non-string elements", () => {
+    it("should throw DecoderError with full details for non-string elements", () => {
       const decoder = array(string());
 
       try {
@@ -256,20 +311,21 @@ describe("array", () => {
         expect.fail();
       } catch (error) {
         expect(error).toBeInstanceOf(DecoderError);
-        expect(error).toEqual(
-          expect.objectContaining({
-            schema: { type: "array", item: { type: "string" } },
-            rules: {},
-            path: {
-              type: "item",
-              index: 0,
-              data: [1, 2, 3],
-              path: {
-                type: "schema",
-                data: 1,
-              },
-            },
-          })
+        expect((error as DecoderError).path).toEqual({
+          type: "item",
+          index: 0,
+          path: {
+            type: "schema",
+            data: 1,
+          },
+          data: [1, 2, 3],
+        });
+        expect((error as DecoderError).schema).toEqual({
+          type: "string",
+        });
+        expect((error as DecoderError).rules).toEqual({});
+        expect((error as DecoderError).message).toBe(
+          'Validation failed at [0] due to schema mismatch; expected schema: {"type":"string"}; received value: 1'
         );
       }
     });

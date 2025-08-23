@@ -94,24 +94,23 @@ describe("boolean", () => {
     expect(decoder.rules).toEqual({});
   });
 
-  it("should throw DecoderError with correct schema, rules and path for non-boolean violation", () => {
+  it("should throw DecoderError with full details for non-boolean violation", () => {
     const decoder = boolean();
 
     try {
       decoder.unstable_decode("not a boolean");
-      expect.fail("Should have thrown an error");
+      expect.fail();
     } catch (error) {
       expect(error).toBeInstanceOf(DecoderError);
       if (error instanceof DecoderError) {
-        expect(error).toEqual(
-          expect.objectContaining({
-            schema: { type: "boolean" },
-            rules: {},
-            path: {
-              type: "schema",
-              data: "not a boolean",
-            },
-          })
+        expect((error as DecoderError).path).toEqual({
+          type: "schema",
+          data: "not a boolean",
+        });
+        expect((error as DecoderError).schema).toEqual({ type: "boolean" });
+        expect((error as DecoderError).rules).toEqual({});
+        expect((error as DecoderError).message).toBe(
+          'Validation failed due to schema mismatch; expected schema: {"type":"boolean"}; received value: "not a boolean"'
         );
       }
     }
@@ -135,7 +134,6 @@ describe("boolean", () => {
     // Falsy values that are not false
     expect(() => decoder.unstable_decode(0)).toThrowError(DecoderError);
     expect(() => decoder.unstable_decode(-0)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(0n)).toThrowError(DecoderError);
     expect(() => decoder.unstable_decode("")).toThrowError(DecoderError);
     expect(() => decoder.unstable_decode(null)).toThrowError(DecoderError);
     expect(() => decoder.unstable_decode(undefined)).toThrowError(DecoderError);

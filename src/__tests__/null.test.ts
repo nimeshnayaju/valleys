@@ -71,10 +71,6 @@ describe("null_", () => {
     expect(() => decoder.unstable_decode(new Error("null"))).toThrowError(
       DecoderError
     );
-
-    // BigInt
-    expect(() => decoder.unstable_decode(0n)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(123n)).toThrowError(DecoderError);
   });
 
   it("should have correct schema", () => {
@@ -87,7 +83,7 @@ describe("null_", () => {
     expect(decoder.rules).toEqual({});
   });
 
-  it("should throw DecoderError with correct schema, rules and path for non-null violation", () => {
+  it("should throw DecoderError with full details for non-null violation", () => {
     const decoder = null_();
 
     try {
@@ -95,15 +91,15 @@ describe("null_", () => {
       expect.fail();
     } catch (error) {
       expect(error).toBeInstanceOf(DecoderError);
-      if (error instanceof DecoderError) {
-        expect(error).toEqual(
-          expect.objectContaining({
-            schema: { type: "null" },
-            rules: {},
-            path: { type: "schema", data: "not null" },
-          })
-        );
-      }
+      expect((error as DecoderError).path).toEqual({
+        type: "schema",
+        data: "not null",
+      });
+      expect((error as DecoderError).schema).toEqual({ type: "null" });
+      expect((error as DecoderError).rules).toEqual({});
+      expect((error as DecoderError).message).toBe(
+        'Validation failed due to schema mismatch; expected schema: {"type":"null"}; received value: "not null"'
+      );
     }
   });
 

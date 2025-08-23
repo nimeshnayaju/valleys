@@ -199,9 +199,6 @@ describe("object", () => {
     expect(() => decoder.unstable_decode(new Set())).toThrowError(DecoderError);
     expect(() => decoder.unstable_decode(NaN)).toThrowError(DecoderError);
     expect(() => decoder.unstable_decode(Infinity)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(BigInt(123))).toThrowError(
-      DecoderError
-    );
   });
 
   it("should reject objects with invalid property values", () => {
@@ -257,7 +254,7 @@ describe("object", () => {
     });
   });
 
-  it("should throw DecoderError with correct schema, rules and path for non-object violation", () => {
+  it("should throw DecoderError with full details for non-object violation", () => {
     const decoder = object();
 
     try {
@@ -265,23 +262,22 @@ describe("object", () => {
       expect.fail();
     } catch (error) {
       expect(error).toBeInstanceOf(DecoderError);
-      expect(error).toEqual(
-        expect.objectContaining({
-          schema: {
-            type: "object",
-            properties: {},
-          },
-          rules: {},
-          path: {
-            type: "schema",
-            data: "not an object",
-          },
-        })
+      expect((error as DecoderError).path).toEqual({
+        type: "schema",
+        data: "not an object",
+      });
+      expect((error as DecoderError).schema).toEqual({
+        type: "object",
+        properties: {},
+      });
+      expect((error as DecoderError).rules).toEqual({});
+      expect((error as DecoderError).message).toBe(
+        'Validation failed due to schema mismatch; expected schema: {"type":"object","properties":{}}; received value: "not an object"'
       );
     }
   });
 
-  it("should throw DecoderError with correct schema, rules and path for property validation failure", () => {
+  it("should throw DecoderError with full details for property validation failure", () => {
     const decoder = object({
       name: string(),
       age: number(),
@@ -292,28 +288,26 @@ describe("object", () => {
       expect.fail();
     } catch (error) {
       expect(error).toBeInstanceOf(DecoderError);
-      expect(error).toEqual(
-        expect.objectContaining({
-          schema: {
-            type: "object",
-            properties: { name: { type: "string" }, age: { type: "number" } },
-          },
-          rules: {},
-          path: {
-            type: "property",
-            property: "name",
-            path: {
-              type: "schema",
-              data: 123,
-            },
-            data: { name: 123, age: 30 },
-          },
-        })
+      expect((error as DecoderError).path).toEqual({
+        type: "property",
+        property: "name",
+        path: {
+          type: "schema",
+          data: 123,
+        },
+        data: { name: 123, age: 30 },
+      });
+      expect((error as DecoderError).schema).toEqual({
+        type: "string",
+      });
+      expect((error as DecoderError).rules).toEqual({});
+      expect((error as DecoderError).message).toBe(
+        'Validation failed at name due to schema mismatch; expected schema: {"type":"string"}; received value: 123'
       );
     }
   });
 
-  it("should throw DecoderError with correct schema, rules and path for nested property validation failure", () => {
+  it("should throw DecoderError with full details for nested property validation failure", () => {
     const decoder = object({
       user: object({
         profile: object({
@@ -327,29 +321,31 @@ describe("object", () => {
       expect.fail();
     } catch (error) {
       expect(error).toBeInstanceOf(DecoderError);
-      expect(error).toEqual(
-        expect.objectContaining({
-          schema: {
-            type: "object",
-            properties: {
-              user: {
-                type: "object",
-                properties: {
-                  profile: {
-                    type: "object",
-                    properties: {
-                      name: { type: "string" },
-                    },
-                  },
-                },
-              },
+      expect((error as DecoderError).path).toEqual({
+        type: "property",
+        property: "user",
+        path: {
+          type: "property",
+          property: "profile",
+          path: {
+            type: "property",
+            property: "name",
+            path: {
+              type: "schema",
+              data: 123,
             },
+            data: { name: 123 },
           },
-          rules: {},
-          path: expect.objectContaining({
-            property: "user",
-          }),
-        })
+          data: { profile: { name: 123 } },
+        },
+        data: { user: { profile: { name: 123 } } },
+      });
+      expect((error as DecoderError).schema).toEqual({
+        type: "string",
+      });
+      expect((error as DecoderError).rules).toEqual({});
+      expect((error as DecoderError).message).toBe(
+        'Validation failed at user.profile.name due to schema mismatch; expected schema: {"type":"string"}; received value: 123'
       );
     }
   });

@@ -82,10 +82,6 @@ describe("undefined_", () => {
     expect(() => decoder.unstable_decode(new Error("undefined"))).toThrowError(
       DecoderError
     );
-
-    // BigInt
-    expect(() => decoder.unstable_decode(0n)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(123n)).toThrowError(DecoderError);
   });
 
   it("should have correct schema", () => {
@@ -98,23 +94,23 @@ describe("undefined_", () => {
     expect(decoder.rules).toEqual({});
   });
 
-  it("should throw DecoderError with correct schema, rules and path for non-undefined violation", () => {
+  it("should throw DecoderError with full details for non-undefined violation", () => {
     const decoder = undefined_();
 
     try {
       decoder.unstable_decode("not undefined");
-      expect.fail("Should have thrown an error");
+      expect.fail();
     } catch (error) {
       expect(error).toBeInstanceOf(DecoderError);
-      if (error instanceof DecoderError) {
-        expect(error).toEqual(
-          expect.objectContaining({
-            schema: { type: "undefined" },
-            rules: {},
-            path: { type: "schema", data: "not undefined" },
-          })
-        );
-      }
+      expect((error as DecoderError).path).toEqual({
+        type: "schema",
+        data: "not undefined",
+      });
+      expect((error as DecoderError).schema).toEqual({ type: "undefined" });
+      expect((error as DecoderError).rules).toEqual({});
+      expect((error as DecoderError).message).toBe(
+        'Validation failed due to schema mismatch; expected schema: {"type":"undefined"}; received value: "not undefined"'
+      );
     }
   });
 

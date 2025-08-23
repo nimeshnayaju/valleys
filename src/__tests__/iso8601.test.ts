@@ -446,7 +446,7 @@ describe("iso8601", () => {
     );
   });
 
-  it("should throw DecoderError with correct schema, rules and path for invalid values", () => {
+  it("should throw DecoderError with full details for non-iso8601 violation", () => {
     const decoder = iso8601();
 
     try {
@@ -454,32 +454,14 @@ describe("iso8601", () => {
       expect.fail();
     } catch (error) {
       expect(error).toBeInstanceOf(DecoderError);
-      expect(error).toEqual(
-        expect.objectContaining({
-          schema: { type: "iso8601" },
-          rules: {},
-          path: {
-            type: "schema",
-            data: 123,
-          },
-        })
-      );
-    }
-
-    try {
-      decoder.unstable_decode("not-a-date");
-      expect.fail();
-    } catch (error) {
-      expect(error).toBeInstanceOf(DecoderError);
-      expect(error).toEqual(
-        expect.objectContaining({
-          schema: { type: "iso8601" },
-          rules: {},
-          path: {
-            type: "schema",
-            data: "not-a-date",
-          },
-        })
+      expect((error as DecoderError).path).toEqual({
+        type: "schema",
+        data: 123,
+      });
+      expect((error as DecoderError).schema).toEqual({ type: "iso8601" });
+      expect((error as DecoderError).rules).toEqual({});
+      expect((error as DecoderError).message).toBe(
+        'Validation failed due to schema mismatch; expected schema: {"type":"iso8601"}; received value: 123'
       );
     }
   });

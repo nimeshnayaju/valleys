@@ -61,7 +61,7 @@ describe("or", () => {
     expect(() => decoder.unstable_decode(null)).toThrowError(DecoderError);
   });
 
-  it("should throw DecoderError with correct schema, rules and path when no decoder matches", () => {
+  it("should throw DecoderError with full details for no decoder matches", () => {
     const decoder = or([string(), number()]);
 
     try {
@@ -69,30 +69,28 @@ describe("or", () => {
       expect.fail();
     } catch (error) {
       expect(error).toBeInstanceOf(DecoderError);
-      if (error instanceof DecoderError) {
-        expect(error).toEqual(
-          expect.objectContaining({
-            schema: {
-              type: "or",
-              item: [{ type: "string" }, { type: "number" }],
-            },
-            rules: {},
-            path: {
-              type: "schema",
-              data: true,
-            },
-          })
-        );
-      }
+      expect((error as DecoderError).path).toEqual({
+        type: "schema",
+        data: true,
+      });
+      expect((error as DecoderError).schema).toEqual({
+        type: "or",
+        item: [{ type: "string" }, { type: "number" }],
+      });
+      expect((error as DecoderError).rules).toEqual({});
+      expect((error as DecoderError).message).toBe(
+        'Validation failed due to schema mismatch; expected schema: {"type":"or","item":[{"type":"string"},{"type":"number"}]}; received value: true'
+      );
     }
   });
 
   it("should only catch DecoderError, not other errors", () => {
     const throwingDecoder = {
-      decode() {
+      unstable_decode() {
         throw new Error("Custom error");
       },
       schema: { type: "custom" },
+      rules: {},
     };
 
     const decoder = or([throwingDecoder as any, string()]);

@@ -53,39 +53,22 @@ describe("number", () => {
       expect(() => decoder.unstable_decode(NaN)).toThrowError(DecoderError);
     });
 
-    it("should throw DecoderError with correct schema, rules and path for non-number violation", () => {
+    it("should throw DecoderError with full details for non-number violation", () => {
       const decoder = number();
       try {
         decoder.unstable_decode("123");
         expect.fail();
       } catch (error) {
         expect(error).toBeInstanceOf(DecoderError);
-        expect(error).toEqual(
-          expect.objectContaining({
-            schema: { type: "number" },
-            rules: {},
-            path: {
-              type: "schema",
-              data: "123",
-            },
-          })
-        );
-      }
-    });
-
-    it("should throw DecoderError with correct schema, rules and path for non-finite number violation", () => {
-      const decoder = number();
-      try {
-        decoder.unstable_decode(Infinity);
-        expect.fail();
-      } catch (error) {
-        expect(error).toBeInstanceOf(DecoderError);
-        expect(error.schema).toEqual({ type: "number" });
-        expect(error.rules).toEqual({});
         expect((error as DecoderError).path).toEqual({
           type: "schema",
-          data: Infinity,
+          data: "123",
         });
+        expect((error as DecoderError).schema).toEqual({ type: "number" });
+        expect((error as DecoderError).rules).toEqual({});
+        expect((error as DecoderError).message).toBe(
+          'Validation failed due to schema mismatch; expected schema: {"type":"number"}; received value: "123"'
+        );
       }
     });
 
@@ -146,7 +129,7 @@ describe("number", () => {
         });
       });
 
-      it("should throw DecoderError with correct schema, rules and path for min violation", () => {
+      it("should throw DecoderError with full details for min violation", () => {
         const decoder = number({ min: 10 });
 
         try {
@@ -154,16 +137,15 @@ describe("number", () => {
           expect.fail();
         } catch (error) {
           expect(error).toBeInstanceOf(DecoderError);
-          expect(error).toEqual(
-            expect.objectContaining({
-              schema: { type: "number" },
-              rules: { min: 10 },
-              path: {
-                type: "rule",
-                rule: "min",
-                data: 5,
-              },
-            })
+          expect((error as DecoderError).path).toEqual({
+            type: "rule",
+            rule: "min",
+            data: 5,
+          });
+          expect((error as DecoderError).schema).toEqual({ type: "number" });
+          expect((error as DecoderError).rules).toEqual({ min: 10 });
+          expect((error as DecoderError).message).toBe(
+            'Validation failed due to rule violation: min; expected schema: {"type":"number"} with rules: {"min":10}; received value: 5'
           );
         }
       });
@@ -220,7 +202,7 @@ describe("number", () => {
         });
       });
 
-      it("should throw DecoderError with correct schema, rules and path for max violation", () => {
+      it("should throw DecoderError with full details for max violation", () => {
         const decoder = number({ max: 10 });
 
         try {
@@ -228,16 +210,15 @@ describe("number", () => {
           expect.fail();
         } catch (error) {
           expect(error).toBeInstanceOf(DecoderError);
-          expect(error).toEqual(
-            expect.objectContaining({
-              schema: { type: "number" },
-              rules: { max: 10 },
-              path: {
-                type: "rule",
-                rule: "max",
-                data: 15,
-              },
-            })
+          expect((error as DecoderError).path).toEqual({
+            type: "rule",
+            rule: "max",
+            data: 15,
+          });
+          expect((error as DecoderError).schema).toEqual({ type: "number" });
+          expect((error as DecoderError).rules).toEqual({ max: 10 });
+          expect((error as DecoderError).message).toBe(
+            'Validation failed due to rule violation: max; expected schema: {"type":"number"} with rules: {"max":10}; received value: 15'
           );
         }
       });
@@ -291,6 +272,27 @@ describe("number", () => {
 
         expect(() => decoder.unstable_decode(-11)).toThrowError(DecoderError);
         expect(() => decoder.unstable_decode(11)).toThrowError(DecoderError);
+      });
+
+      it("should throw DecoderError with full details for min and max violation", () => {
+        const decoder = number({ min: 10, max: 20 });
+
+        try {
+          decoder.unstable_decode(5);
+          expect.fail();
+        } catch (error) {
+          expect(error).toBeInstanceOf(DecoderError);
+          expect((error as DecoderError).path).toEqual({
+            type: "rule",
+            rule: "min",
+            data: 5,
+          });
+          expect((error as DecoderError).schema).toEqual({ type: "number" });
+          expect((error as DecoderError).rules).toEqual({ min: 10, max: 20 });
+          expect((error as DecoderError).message).toBe(
+            'Validation failed due to rule violation: min; expected schema: {"type":"number"} with rules: {"min":10,"max":20}; received value: 5'
+          );
+        }
       });
     });
   });

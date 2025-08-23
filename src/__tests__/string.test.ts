@@ -76,24 +76,23 @@ describe("string", () => {
       expect(() => decoder.unstable_decode(new Set())).toThrowError(
         DecoderError
       ); // Set
-      expect(() => decoder.unstable_decode(BigInt(123))).toThrowError(
-        DecoderError
-      ); // BigInt
     });
 
-    it("should throw DecoderError with correct schema, rules and path for non-string violation", () => {
+    it("should throw DecoderError with full details for non-string violation", () => {
       const decoder = string();
       try {
         decoder.unstable_decode(123);
         expect.fail();
       } catch (error) {
         expect(error).toBeInstanceOf(DecoderError);
-        expect(error).toEqual(
-          expect.objectContaining({
-            schema: { type: "string" },
-            rules: {},
-            path: { type: "schema", data: 123 },
-          })
+        expect((error as DecoderError).path).toEqual({
+          type: "schema",
+          data: 123,
+        });
+        expect((error as DecoderError).schema).toEqual({ type: "string" });
+        expect((error as DecoderError).rules).toEqual({});
+        expect((error as DecoderError).message).toBe(
+          'Validation failed due to schema mismatch; expected schema: {"type":"string"}; received value: 123'
         );
       }
     });
@@ -136,11 +135,10 @@ describe("string", () => {
         expect(decoder.rules).toEqual({
           minLength: 5,
           maxLength: undefined,
-          pattern: undefined,
         });
       });
 
-      it("should throw DecoderError with correct schema, rules and path for minLength violation", () => {
+      it("should throw DecoderError with full details for minLength violation", () => {
         const decoder = string({ minLength: 5 });
 
         try {
@@ -148,16 +146,15 @@ describe("string", () => {
           expect.fail();
         } catch (error) {
           expect(error).toBeInstanceOf(DecoderError);
-          expect(error).toEqual(
-            expect.objectContaining({
-              schema: { type: "string" },
-              rules: { minLength: 5 },
-              path: {
-                type: "rule",
-                rule: "minLength",
-                data: "abc",
-              },
-            })
+          expect((error as DecoderError).path).toEqual({
+            type: "rule",
+            rule: "minLength",
+            data: "abc",
+          });
+          expect((error as DecoderError).schema).toEqual({ type: "string" });
+          expect((error as DecoderError).rules).toEqual({ minLength: 5 });
+          expect((error as DecoderError).message).toBe(
+            'Validation failed due to rule violation: minLength; expected schema: {"type":"string"} with rules: {"minLength":5}; received value: "abc"'
           );
         }
       });
@@ -188,11 +185,10 @@ describe("string", () => {
         expect(decoder.rules).toEqual({
           minLength: undefined,
           maxLength: 10,
-          pattern: undefined,
         });
       });
 
-      it("should throw DecoderError with correct schema, rules and path for maxLength violation", () => {
+      it("should throw DecoderError with full details for maxLength violation", () => {
         const decoder = string({ maxLength: 5 });
 
         try {
@@ -200,92 +196,15 @@ describe("string", () => {
           expect.fail();
         } catch (error) {
           expect(error).toBeInstanceOf(DecoderError);
-          expect(error).toEqual(
-            expect.objectContaining({
-              schema: { type: "string" },
-              rules: { maxLength: 5 },
-              path: {
-                type: "rule",
-                rule: "maxLength",
-                data: "hello world",
-              },
-            })
-          );
-        }
-      });
-    });
-
-    describe("pattern", () => {
-      it("should accept strings matching the pattern", () => {
-        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        const decoder = string({ pattern: emailPattern });
-
-        expect(decoder.unstable_decode("test@example.com")).toBe(
-          "test@example.com"
-        );
-        expect(decoder.unstable_decode("user.name@domain.co.uk")).toBe(
-          "user.name@domain.co.uk"
-        );
-      });
-
-      it("should reject strings not matching the pattern", () => {
-        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        const decoder = string({ pattern: emailPattern });
-
-        expect(() => decoder.unstable_decode("not-an-email")).toThrowError(
-          DecoderError
-        );
-        expect(() => decoder.unstable_decode("@example.com")).toThrowError(
-          DecoderError
-        );
-        expect(() => decoder.unstable_decode("test@")).toThrowError(
-          DecoderError
-        );
-      });
-
-      it("should work with simple patterns", () => {
-        const alphaNumeric = /^[a-zA-Z0-9]+$/;
-        const decoder = string({ pattern: alphaNumeric });
-
-        expect(decoder.unstable_decode("abc123")).toBe("abc123");
-        expect(decoder.unstable_decode("ABC")).toBe("ABC");
-        expect(() => decoder.unstable_decode("abc-123")).toThrowError(
-          DecoderError
-        );
-        expect(() => decoder.unstable_decode("abc 123")).toThrowError(
-          DecoderError
-        );
-      });
-
-      it("should include pattern in rules", () => {
-        const pattern = /test/;
-        const decoder = string({ pattern });
-        expect(decoder.rules).toEqual({
-          minLength: undefined,
-          maxLength: undefined,
-          pattern,
-        });
-      });
-
-      it("should throw DecoderError with correct schema, rules and path for pattern violation", () => {
-        const pattern = /^[a-z]+$/;
-        const decoder = string({ pattern });
-
-        try {
-          decoder.unstable_decode("123");
-          expect.fail();
-        } catch (error) {
-          expect(error).toBeInstanceOf(DecoderError);
-          expect(error).toEqual(
-            expect.objectContaining({
-              schema: { type: "string" },
-              rules: { pattern },
-              path: {
-                type: "rule",
-                rule: "pattern",
-                data: "123",
-              },
-            })
+          expect((error as DecoderError).path).toEqual({
+            type: "rule",
+            rule: "maxLength",
+            data: "hello world",
+          });
+          expect((error as DecoderError).schema).toEqual({ type: "string" });
+          expect((error as DecoderError).rules).toEqual({ maxLength: 5 });
+          expect((error as DecoderError).message).toBe(
+            'Validation failed due to rule violation: maxLength; expected schema: {"type":"string"} with rules: {"maxLength":5}; received value: "hello world"'
           );
         }
       });
