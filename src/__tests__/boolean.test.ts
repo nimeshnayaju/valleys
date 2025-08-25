@@ -1,115 +1,157 @@
 import { describe, expect, it } from "vitest";
-import { boolean, DecoderError } from "../index";
+import { boolean, ValidationError } from "../index";
 
 describe("boolean", () => {
   it("should accept boolean values", () => {
-    const decoder = boolean();
+    const validator = boolean();
 
     // Test true
-    expect(decoder.unstable_decode(true)).toBe(true);
+    expect(validator.unstable_validate(true)).toBe(true);
 
     // Test false
-    expect(decoder.unstable_decode(false)).toBe(false);
+    expect(validator.unstable_validate(false)).toBe(false);
   });
 
   it("should reject non-boolean values", () => {
-    const decoder = boolean();
+    const validator = boolean();
 
     // Numbers
-    expect(() => decoder.unstable_decode(0)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(1)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(-1)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(123)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(3.14)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(Infinity)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(-Infinity)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(NaN)).toThrowError(DecoderError);
+    expect(() => validator.unstable_validate(0)).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate(1)).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate(-1)).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate(123)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(3.14)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(Infinity)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(-Infinity)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(NaN)).toThrowError(
+      ValidationError
+    );
 
     // Strings
-    expect(() => decoder.unstable_decode("true")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode("false")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode("True")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode("False")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode("TRUE")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode("FALSE")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode("1")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode("0")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode("")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(" ")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode("yes")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode("no")).toThrowError(DecoderError);
+    expect(() => validator.unstable_validate("true")).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate("false")).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate("True")).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate("False")).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate("TRUE")).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate("FALSE")).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate("1")).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate("0")).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate("")).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate(" ")).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate("yes")).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate("no")).toThrowError(
+      ValidationError
+    );
 
     // Null and undefined
-    expect(() => decoder.unstable_decode(null)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(undefined)).toThrowError(DecoderError);
+    expect(() => validator.unstable_validate(null)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(undefined)).toThrowError(
+      ValidationError
+    );
 
     // Objects and arrays
-    expect(() => decoder.unstable_decode({})).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode([])).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode([true])).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode([false])).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode({ value: true })).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate({})).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate([])).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate([true])).toThrowError(
+      ValidationError
     );
-    expect(() => decoder.unstable_decode({ value: false })).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate([false])).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate({ value: true })).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate({ value: false })).toThrowError(
+      ValidationError
     );
 
     // Functions
-    expect(() => decoder.unstable_decode(() => true)).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate(() => true)).toThrowError(
+      ValidationError
     );
-    expect(() => decoder.unstable_decode(() => false)).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate(() => false)).toThrowError(
+      ValidationError
     );
     expect(() =>
-      decoder.unstable_decode(function () {
+      validator.unstable_validate(function () {
         return true;
       })
-    ).toThrowError(DecoderError);
+    ).toThrowError(ValidationError);
 
     // Symbols and other types
-    expect(() => decoder.unstable_decode(Symbol("test"))).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate(Symbol("test"))).toThrowError(
+      ValidationError
     );
-    expect(() => decoder.unstable_decode(new Date())).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate(new Date())).toThrowError(
+      ValidationError
     );
-    expect(() => decoder.unstable_decode(/regex/)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(new Boolean(true))).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate(/regex/)).toThrowError(
+      ValidationError
     );
-    expect(() => decoder.unstable_decode(new Boolean(false))).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate(new Boolean(true))).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(new Boolean(false))).toThrowError(
+      ValidationError
     );
   });
 
   it("should have correct schema", () => {
-    const decoder = boolean();
-    expect(decoder.schema).toEqual({ type: "boolean" });
+    const validator = boolean();
+    expect(validator.schema).toEqual({ type: "boolean" });
   });
 
   it("should have empty rules", () => {
-    const decoder = boolean();
-    expect(decoder.rules).toEqual({});
+    const validator = boolean();
+    expect(validator.rules).toEqual({});
   });
 
-  it("should throw DecoderError with full details for non-boolean violation", () => {
-    const decoder = boolean();
+  it("should throw ValidationError with full details for non-boolean violation", () => {
+    const validator = boolean();
 
     try {
-      decoder.unstable_decode("not a boolean");
+      validator.unstable_validate("not a boolean");
       expect.fail();
     } catch (error) {
-      expect(error).toBeInstanceOf(DecoderError);
-      if (error instanceof DecoderError) {
-        expect((error as DecoderError).path).toEqual({
+      expect(error).toBeInstanceOf(ValidationError);
+      if (error instanceof ValidationError) {
+        expect((error as ValidationError).path).toEqual({
           type: "schema",
           data: "not a boolean",
         });
-        expect((error as DecoderError).schema).toEqual({ type: "boolean" });
-        expect((error as DecoderError).rules).toEqual({});
-        expect((error as DecoderError).message).toBe(
+        expect((error as ValidationError).schema).toEqual({ type: "boolean" });
+        expect((error as ValidationError).rules).toEqual({});
+        expect((error as ValidationError).message).toBe(
           'Validation failed due to schema mismatch; expected schema: {"type":"boolean"}; received value: "not a boolean"'
         );
       }
@@ -117,26 +159,32 @@ describe("boolean", () => {
   });
 
   it("should handle edge cases with truthy/falsy values", () => {
-    const decoder = boolean();
+    const validator = boolean();
 
     // Truthy values that are not true
-    expect(() => decoder.unstable_decode("non-empty string")).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate("non-empty string")).toThrowError(
+      ValidationError
     );
-    expect(() => decoder.unstable_decode(1)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(-1)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode([])).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode({})).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(new Date())).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate(1)).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate(-1)).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate([])).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate({})).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate(new Date())).toThrowError(
+      ValidationError
     );
 
     // Falsy values that are not false
-    expect(() => decoder.unstable_decode(0)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(-0)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode("")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(null)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(undefined)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(NaN)).toThrowError(DecoderError);
+    expect(() => validator.unstable_validate(0)).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate(-0)).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate("")).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate(null)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(undefined)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(NaN)).toThrowError(
+      ValidationError
+    );
   });
 });

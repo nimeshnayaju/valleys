@@ -5,25 +5,27 @@ import {
   number,
   boolean,
   array,
-  DecoderError,
+  ValidationError,
   or,
   undefined_,
 } from "../index";
 
 describe("object", () => {
-  it("should accept any object when no decoders are provided", () => {
-    const decoder = object();
+  it("should accept any object when no validators are provided", () => {
+    const validator = object();
 
     // Empty object
-    expect(decoder.unstable_decode({})).toEqual({});
+    expect(validator.unstable_validate({})).toEqual({});
 
     // Objects with various properties
-    expect(decoder.unstable_decode({ name: "John" })).toEqual({ name: "John" });
-    expect(decoder.unstable_decode({ age: 30, active: true })).toEqual({
+    expect(validator.unstable_validate({ name: "John" })).toEqual({
+      name: "John",
+    });
+    expect(validator.unstable_validate({ age: 30, active: true })).toEqual({
       age: 30,
       active: true,
     });
-    expect(decoder.unstable_decode({ nested: { value: 123 } })).toEqual({
+    expect(validator.unstable_validate({ nested: { value: 123 } })).toEqual({
       nested: { value: 123 },
     });
 
@@ -35,18 +37,18 @@ describe("object", () => {
       metadata: { created: new Date(), updated: null },
       fn: () => {},
     };
-    expect(decoder.unstable_decode(complexObj)).toEqual(complexObj);
+    expect(validator.unstable_validate(complexObj)).toEqual(complexObj);
   });
 
-  it("should validate objects with property decoders", () => {
-    const decoder = object({
+  it("should validate objects with property validators", () => {
+    const validator = object({
       name: string(),
       age: number(),
       isActive: boolean(),
     });
 
     const validObj = { name: "John", age: 30, isActive: true };
-    expect(decoder.unstable_decode(validObj)).toEqual(validObj);
+    expect(validator.unstable_validate(validObj)).toEqual(validObj);
 
     // Extra properties should be allowed
     const objWithExtra = {
@@ -55,11 +57,11 @@ describe("object", () => {
       isActive: false,
       extra: "data",
     };
-    expect(decoder.unstable_decode(objWithExtra)).toEqual(objWithExtra);
+    expect(validator.unstable_validate(objWithExtra)).toEqual(objWithExtra);
   });
 
-  it("should work with nested object decoders", () => {
-    const decoder = object({
+  it("should work with nested object validators", () => {
+    const validator = object({
       user: object({
         name: string(),
         age: number(),
@@ -74,11 +76,11 @@ describe("object", () => {
       user: { name: "Alice", age: 28 },
       settings: { theme: "dark", notifications: true },
     };
-    expect(decoder.unstable_decode(validData)).toEqual(validData);
+    expect(validator.unstable_validate(validData)).toEqual(validData);
   });
 
-  it("should work with array decoders in objects", () => {
-    const decoder = object({
+  it("should work with array validators in objects", () => {
+    const validator = object({
       tags: array(string()),
       scores: array(number()),
     });
@@ -87,56 +89,56 @@ describe("object", () => {
       tags: ["javascript", "typescript", "node"],
       scores: [85, 92, 78],
     };
-    expect(decoder.unstable_decode(validData)).toEqual(validData);
+    expect(validator.unstable_validate(validData)).toEqual(validData);
   });
 
   it("should handle objects with undefined properties", () => {
-    const decoder = object({
+    const validator = object({
       name: string(),
       optional: string(),
     });
 
     // undefined properties should be validated if present in the object
     const objWithUndefined = { name: "Test", optional: undefined };
-    expect(() => decoder.unstable_decode(objWithUndefined)).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate(objWithUndefined)).toThrowError(
+      ValidationError
     );
   });
 
-  it("should handle properties that don't have decoders", () => {
-    const decoder = object({
+  it("should handle properties that don't have validators", () => {
+    const validator = object({
       name: string(),
     });
 
-    // Properties without decoders should pass through
+    // Properties without validators should pass through
     const obj = { name: "Test", other: "value", another: 123 };
-    expect(decoder.unstable_decode(obj)).toEqual(obj);
+    expect(validator.unstable_validate(obj)).toEqual(obj);
   });
 
   it("should preserve object reference for valid objects", () => {
-    const decoder = object();
+    const validator = object();
     const obj = { test: "value" };
-    const result = decoder.unstable_decode(obj);
+    const result = validator.unstable_validate(obj);
 
     expect(result).toBe(obj);
   });
 
-  it("should include schema for empty object decoder", () => {
-    const decoder = object();
-    expect(decoder.schema).toEqual({
+  it("should include schema for empty object validator", () => {
+    const validator = object();
+    expect(validator.schema).toEqual({
       type: "object",
       properties: {},
     });
   });
 
   it("should include schema with property schemas", () => {
-    const decoder = object({
+    const validator = object({
       name: string(),
       age: number(),
       isActive: boolean(),
     });
 
-    expect(decoder.schema).toEqual({
+    expect(validator.schema).toEqual({
       type: "object",
       properties: {
         name: { type: "string" },
@@ -147,14 +149,14 @@ describe("object", () => {
   });
 
   it("should include nested schemas", () => {
-    const decoder = object({
+    const validator = object({
       user: object({
         name: string(),
         tags: array(string()),
       }),
     });
 
-    expect(decoder.schema).toEqual({
+    expect(validator.schema).toEqual({
       type: "object",
       properties: {
         user: {
@@ -169,126 +171,152 @@ describe("object", () => {
   });
 
   it("should reject non-objects", () => {
-    const decoder = object();
+    const validator = object();
 
     // Primitives
-    expect(() => decoder.unstable_decode(null)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(undefined)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode("string")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(123)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(true)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(false)).toThrowError(DecoderError);
+    expect(() => validator.unstable_validate(null)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(undefined)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate("string")).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(123)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(true)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(false)).toThrowError(
+      ValidationError
+    );
 
     // Arrays (arrays are objects but should be rejected)
-    expect(() => decoder.unstable_decode([])).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode([1, 2, 3])).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(["a", "b", "c"])).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate([])).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate([1, 2, 3])).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(["a", "b", "c"])).toThrowError(
+      ValidationError
     );
 
     // Other non-plain objects
-    expect(() => decoder.unstable_decode(() => {})).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(Symbol("test"))).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate(() => {})).toThrowError(
+      ValidationError
     );
-    expect(() => decoder.unstable_decode(new Date())).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate(Symbol("test"))).toThrowError(
+      ValidationError
     );
-    expect(() => decoder.unstable_decode(/regex/)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(new Map())).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(new Set())).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(NaN)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(Infinity)).toThrowError(DecoderError);
+    expect(() => validator.unstable_validate(new Date())).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(/regex/)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(new Map())).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(new Set())).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(NaN)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(Infinity)).toThrowError(
+      ValidationError
+    );
   });
 
   it("should reject objects with invalid property values", () => {
-    const decoder = object({
+    const validator = object({
       name: string(),
       age: number(),
     });
 
     // Invalid name (not a string)
-    expect(() => decoder.unstable_decode({ name: 123, age: 30 })).toThrowError(
-      DecoderError
-    );
-    expect(() => decoder.unstable_decode({ name: null, age: 30 })).toThrowError(
-      DecoderError
-    );
     expect(() =>
-      decoder.unstable_decode({ name: { value: "John" }, age: 30 })
-    ).toThrowError(DecoderError);
+      validator.unstable_validate({ name: 123, age: 30 })
+    ).toThrowError(ValidationError);
+    expect(() =>
+      validator.unstable_validate({ name: null, age: 30 })
+    ).toThrowError(ValidationError);
+    expect(() =>
+      validator.unstable_validate({ name: { value: "John" }, age: 30 })
+    ).toThrowError(ValidationError);
 
     // Invalid age (not a number)
     expect(() =>
-      decoder.unstable_decode({ name: "John", age: "30" })
-    ).toThrowError(DecoderError);
+      validator.unstable_validate({ name: "John", age: "30" })
+    ).toThrowError(ValidationError);
     expect(() =>
-      decoder.unstable_decode({ name: "John", age: null })
-    ).toThrowError(DecoderError);
+      validator.unstable_validate({ name: "John", age: null })
+    ).toThrowError(ValidationError);
     expect(() =>
-      decoder.unstable_decode({ name: "John", age: true })
-    ).toThrowError(DecoderError);
+      validator.unstable_validate({ name: "John", age: true })
+    ).toThrowError(ValidationError);
   });
 
   it("should reject objects with missing properties unless specified as optional", () => {
-    const decoder = object({
+    const validator = object({
       name: string(),
       age: number(),
     });
 
-    expect(() => decoder.unstable_decode({ name: "John" })).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate({ name: "John" })).toThrowError(
+      ValidationError
     );
-    expect(() => decoder.unstable_decode({ age: 30 })).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate({ age: 30 })).toThrowError(
+      ValidationError
     );
-    expect(() => decoder.unstable_decode({})).toThrowError(DecoderError);
+    expect(() => validator.unstable_validate({})).toThrowError(ValidationError);
 
-    const optionalDecoder = object({
+    const optionalvalidator = object({
       name: string(),
       age: or([number(), undefined_()]),
     });
 
-    expect(optionalDecoder.unstable_decode({ name: "John" })).toEqual({
+    expect(optionalvalidator.unstable_validate({ name: "John" })).toEqual({
       name: "John",
     });
   });
 
-  it("should throw DecoderError with full details for non-object violation", () => {
-    const decoder = object();
+  it("should throw ValidationError with full details for non-object violation", () => {
+    const validator = object();
 
     try {
-      decoder.unstable_decode("not an object");
+      validator.unstable_validate("not an object");
       expect.fail();
     } catch (error) {
-      expect(error).toBeInstanceOf(DecoderError);
-      expect((error as DecoderError).path).toEqual({
+      expect(error).toBeInstanceOf(ValidationError);
+      expect((error as ValidationError).path).toEqual({
         type: "schema",
         data: "not an object",
       });
-      expect((error as DecoderError).schema).toEqual({
+      expect((error as ValidationError).schema).toEqual({
         type: "object",
         properties: {},
       });
-      expect((error as DecoderError).rules).toEqual({});
-      expect((error as DecoderError).message).toBe(
+      expect((error as ValidationError).rules).toEqual({});
+      expect((error as ValidationError).message).toBe(
         'Validation failed due to schema mismatch; expected schema: {"type":"object","properties":{}}; received value: "not an object"'
       );
     }
   });
 
-  it("should throw DecoderError with full details for property validation failure", () => {
-    const decoder = object({
+  it("should throw ValidationError with full details for property validation failure", () => {
+    const validator = object({
       name: string(),
       age: number(),
     });
 
     try {
-      decoder.unstable_decode({ name: 123, age: 30 });
+      validator.unstable_validate({ name: 123, age: 30 });
       expect.fail();
     } catch (error) {
-      expect(error).toBeInstanceOf(DecoderError);
-      expect((error as DecoderError).path).toEqual({
+      expect(error).toBeInstanceOf(ValidationError);
+      expect((error as ValidationError).path).toEqual({
         type: "property",
         property: "name",
         path: {
@@ -297,18 +325,18 @@ describe("object", () => {
         },
         data: { name: 123, age: 30 },
       });
-      expect((error as DecoderError).schema).toEqual({
+      expect((error as ValidationError).schema).toEqual({
         type: "string",
       });
-      expect((error as DecoderError).rules).toEqual({});
-      expect((error as DecoderError).message).toBe(
+      expect((error as ValidationError).rules).toEqual({});
+      expect((error as ValidationError).message).toBe(
         'Validation failed at name due to schema mismatch; expected schema: {"type":"string"}; received value: 123'
       );
     }
   });
 
-  it("should throw DecoderError with full details for nested property validation failure", () => {
-    const decoder = object({
+  it("should throw ValidationError with full details for nested property validation failure", () => {
+    const validator = object({
       user: object({
         profile: object({
           name: string(),
@@ -317,11 +345,11 @@ describe("object", () => {
     });
 
     try {
-      decoder.unstable_decode({ user: { profile: { name: 123 } } });
+      validator.unstable_validate({ user: { profile: { name: 123 } } });
       expect.fail();
     } catch (error) {
-      expect(error).toBeInstanceOf(DecoderError);
-      expect((error as DecoderError).path).toEqual({
+      expect(error).toBeInstanceOf(ValidationError);
+      expect((error as ValidationError).path).toEqual({
         type: "property",
         property: "user",
         path: {
@@ -340,11 +368,11 @@ describe("object", () => {
         },
         data: { user: { profile: { name: 123 } } },
       });
-      expect((error as DecoderError).schema).toEqual({
+      expect((error as ValidationError).schema).toEqual({
         type: "string",
       });
-      expect((error as DecoderError).rules).toEqual({});
-      expect((error as DecoderError).message).toBe(
+      expect((error as ValidationError).rules).toEqual({});
+      expect((error as ValidationError).message).toBe(
         'Validation failed at user.profile.name due to schema mismatch; expected schema: {"type":"string"}; received value: 123'
       );
     }

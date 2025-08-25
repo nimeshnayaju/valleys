@@ -1,145 +1,175 @@
 import { describe, expect, it } from "vitest";
-import { undefined_, DecoderError } from "../index";
+import { undefined_, ValidationError } from "../index";
 
 describe("undefined_", () => {
   it("should accept undefined values", () => {
-    const decoder = undefined_();
-    expect(decoder.unstable_decode(undefined)).toBe(undefined);
+    const validator = undefined_();
+    expect(validator.unstable_validate(undefined)).toBe(undefined);
   });
 
   it("should reject non-undefined values", () => {
-    const decoder = undefined_();
+    const validator = undefined_();
 
     // Null
-    expect(() => decoder.unstable_decode(null)).toThrowError(DecoderError);
+    expect(() => validator.unstable_validate(null)).toThrowError(
+      ValidationError
+    );
 
     // Booleans
-    expect(() => decoder.unstable_decode(true)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(false)).toThrowError(DecoderError);
+    expect(() => validator.unstable_validate(true)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(false)).toThrowError(
+      ValidationError
+    );
 
     // Numbers
-    expect(() => decoder.unstable_decode(0)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(1)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(-1)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(123)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(3.14)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(Infinity)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(-Infinity)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(NaN)).toThrowError(DecoderError);
+    expect(() => validator.unstable_validate(0)).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate(1)).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate(-1)).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate(123)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(3.14)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(Infinity)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(-Infinity)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(NaN)).toThrowError(
+      ValidationError
+    );
 
     // Strings
-    expect(() => decoder.unstable_decode("undefined")).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate("undefined")).toThrowError(
+      ValidationError
     );
-    expect(() => decoder.unstable_decode("UNDEFINED")).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate("UNDEFINED")).toThrowError(
+      ValidationError
     );
-    expect(() => decoder.unstable_decode("Undefined")).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate("Undefined")).toThrowError(
+      ValidationError
     );
-    expect(() => decoder.unstable_decode("")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(" ")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode("0")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode("false")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode("null")).toThrowError(DecoderError);
+    expect(() => validator.unstable_validate("")).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate(" ")).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate("0")).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate("false")).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate("null")).toThrowError(
+      ValidationError
+    );
 
     // Objects and arrays
-    expect(() => decoder.unstable_decode({})).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode([])).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode([undefined])).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate({})).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate([])).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate([undefined])).toThrowError(
+      ValidationError
     );
-    expect(() => decoder.unstable_decode({ value: undefined })).toThrowError(
-      DecoderError
-    );
-    expect(() => decoder.unstable_decode(new Object())).toThrowError(
-      DecoderError
+    expect(() =>
+      validator.unstable_validate({ value: undefined })
+    ).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate(new Object())).toThrowError(
+      ValidationError
     );
 
     // Functions
-    expect(() => decoder.unstable_decode(() => undefined)).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate(() => undefined)).toThrowError(
+      ValidationError
     );
     expect(() =>
-      decoder.unstable_decode(function () {
+      validator.unstable_validate(function () {
         return undefined;
       })
-    ).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(function () {})).toThrowError(
-      DecoderError
+    ).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate(function () {})).toThrowError(
+      ValidationError
     );
 
     // Symbols and other types
-    expect(() => decoder.unstable_decode(Symbol("undefined"))).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate(Symbol("undefined"))).toThrowError(
+      ValidationError
     );
-    expect(() => decoder.unstable_decode(new Date())).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate(new Date())).toThrowError(
+      ValidationError
     );
-    expect(() => decoder.unstable_decode(/undefined/)).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate(/undefined/)).toThrowError(
+      ValidationError
     );
-    expect(() => decoder.unstable_decode(new Error("undefined"))).toThrowError(
-      DecoderError
-    );
+    expect(() =>
+      validator.unstable_validate(new Error("undefined"))
+    ).toThrowError(ValidationError);
   });
 
   it("should have correct schema", () => {
-    const decoder = undefined_();
-    expect(decoder.schema).toEqual({ type: "undefined" });
+    const validator = undefined_();
+    expect(validator.schema).toEqual({ type: "undefined" });
   });
 
   it("should have empty rules", () => {
-    const decoder = undefined_();
-    expect(decoder.rules).toEqual({});
+    const validator = undefined_();
+    expect(validator.rules).toEqual({});
   });
 
-  it("should throw DecoderError with full details for non-undefined violation", () => {
-    const decoder = undefined_();
+  it("should throw ValidationError with full details for non-undefined violation", () => {
+    const validator = undefined_();
 
     try {
-      decoder.unstable_decode("not undefined");
+      validator.unstable_validate("not undefined");
       expect.fail();
     } catch (error) {
-      expect(error).toBeInstanceOf(DecoderError);
-      expect((error as DecoderError).path).toEqual({
+      expect(error).toBeInstanceOf(ValidationError);
+      expect((error as ValidationError).path).toEqual({
         type: "schema",
         data: "not undefined",
       });
-      expect((error as DecoderError).schema).toEqual({ type: "undefined" });
-      expect((error as DecoderError).rules).toEqual({});
-      expect((error as DecoderError).message).toBe(
+      expect((error as ValidationError).schema).toEqual({ type: "undefined" });
+      expect((error as ValidationError).rules).toEqual({});
+      expect((error as ValidationError).message).toBe(
         'Validation failed due to schema mismatch; expected schema: {"type":"undefined"}; received value: "not undefined"'
       );
     }
   });
 
   it("should handle edge cases with undefined-like values", () => {
-    const decoder = undefined_();
+    const validator = undefined_();
 
     // Values that might be confused with undefined
-    expect(() => decoder.unstable_decode(null)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(0)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(false)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode("")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(NaN)).toThrowError(DecoderError);
+    expect(() => validator.unstable_validate(null)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(0)).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate(false)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate("")).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate(NaN)).toThrowError(
+      ValidationError
+    );
 
     // Different ways to express undefined
-    expect(decoder.unstable_decode(void 0)).toBe(undefined);
-    expect(decoder.unstable_decode(void 123)).toBe(undefined);
+    expect(validator.unstable_validate(void 0)).toBe(undefined);
+    expect(validator.unstable_validate(void 123)).toBe(undefined);
 
     // Global undefined
-    expect(decoder.unstable_decode(globalThis.undefined)).toBe(undefined);
+    expect(validator.unstable_validate(globalThis.undefined)).toBe(undefined);
   });
 
   it("should work correctly with strict equality", () => {
-    const decoder = undefined_();
+    const validator = undefined_();
 
     // Only the primitive undefined value should pass
-    expect(decoder.unstable_decode(undefined)).toBe(undefined);
+    expect(validator.unstable_validate(undefined)).toBe(undefined);
 
     // Ensure the returned value is actually undefined
-    const result = decoder.unstable_decode(undefined);
+    const result = validator.unstable_validate(undefined);
     expect(result === undefined).toBe(true);
     expect(result).toBeUndefined();
   });

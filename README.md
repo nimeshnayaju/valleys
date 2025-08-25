@@ -1,18 +1,18 @@
-Lightweight, zero-dependency library for validating arbitrary runtime data in TypeScript. `decode-kit` provides assertion-based validation that refines your types in-place — no cloning, no transformations, and minimal runtime overhead.
+Lightweight, zero-dependency library for validating arbitrary runtime data in TypeScript. `valleys` provides assertion-based validation that refines your types in-place — no cloning, no transformations, and minimal runtime overhead.
 
 ### Installation
 
 ```bash
-npm install decode-kit
+npm install valleys
 ```
 
 ## Quick Start
 
-`decode-kit` validates your data and narrows its type in-place. Your original values remain unchanged - only their TypeScript types are refined. The `validate` function runs a runtime check and, on success, asserts the original variable's type. On failure, it throws a
-`DecoderError`.
+`valleys` validates your data and narrows its type in-place. Your original values remain unchanged - only their TypeScript types are refined. The `validate` function runs a runtime check and, on success, asserts the original variable's type. On failure, it throws a
+`ValidationError`.
 
 ```ts
-import { object, string, number, validate } from "decode-kit";
+import { object, string, number, validate } from "valleys";
 
 // Example of untrusted data (e.g., from an API)
 const input: unknown = { id: 123, name: "Alice" };
@@ -24,11 +24,11 @@ validate(input, object({ id: number(), name: string() }));
 console.log(input.id, input.name);
 ```
 
-Libraries like [Zod](https://zod.dev/), [Valibot](https://valibot.dev/), [Decoders](https://decoders.cc/), etc typically return a new (often transformed) value from `.parse()`. `decode-kit` instead asserts types directly - this provides several performance benefits as no time is spent copying arrays, strings or nested objects. This makes `decode-kit` ideal for performance-critical applications where memory efficiency and speed matter.
+Libraries like [Zod](https://zod.dev/), [Valibot](https://valibot.dev/), [Decoders](https://decoders.cc/), etc typically return a new (often transformed) value from `.parse()`. `valleys` instead asserts types directly - this provides several performance benefits as no time is spent copying arrays, strings or nested objects. This makes `valleys` ideal for performance-critical applications where memory efficiency and speed matter.
 
 ### Error handling
 
-`decode-kit` uses a fail-fast approach - validation stops and throws an error immediately when the first validation failure is encountered. This provides better performance and clearer error messages by focusing on the first issue found. The `validate` function throws a `DecoderError` if validation fails. This error object includes the path to the exact location of the validation failure (e.g., nested objects/arrays), the expected schema and ruleset that the value failed to match. Additionally, the error includes a pre-formatted human-readable error message.
+`valleys` uses a fail-fast approach - validation stops and throws an error immediately when the first validation failure is encountered. This provides better performance and clearer error messages by focusing on the first issue found. The `validate` function throws a `ValidationError` if validation fails. This error object includes the path to the exact location of the validation failure (e.g., nested objects/arrays), the expected schema and ruleset that the value failed to match. Additionally, the error includes a pre-formatted human-readable error message.
 
 Example error message:
 
@@ -36,7 +36,7 @@ Example error message:
 Validation failed at user.age due to schema mismatch; expected schema: {"type":"number"}
 ```
 
-For more control over error messages, you can catch `DecoderError` and traverse its `path` property to build custom messages.
+For more control over error messages, you can catch `ValidationError` and traverse its `path` property to build custom messages.
 
 ### API Reference
 
@@ -45,7 +45,7 @@ For more control over error messages, you can catch `DecoderError` and traverse 
 Validates that a value is a string. Optionally accepts rules for validation.
 
 ```ts
-import { string, validate } from "decode-kit";
+import { string, validate } from "valleys";
 
 // Basic usage
 validate(input, string());
@@ -65,7 +65,7 @@ validate(input, string({ minLength: 3, maxLength: 50 }));
 Validates that a value is a finite number.
 
 ```ts
-import { number, validate } from "decode-kit";
+import { number, validate } from "valleys";
 
 // Basic usage
 validate(input, number());
@@ -85,7 +85,7 @@ validate(input, number({ min: 0, max: 100 }));
 Validates that a value is a boolean.
 
 ```ts
-import { boolean, validate } from "decode-kit";
+import { boolean, validate } from "valleys";
 
 validate(input, boolean());
 // input is typed as boolean
@@ -96,7 +96,7 @@ validate(input, boolean());
 Validates that a value is exactly equal to a specific literal value.
 
 ```ts
-import { constant, validate } from "decode-kit";
+import { constant, validate } from "valleys";
 
 // String literals
 validate(input, constant("hello"));
@@ -116,7 +116,7 @@ validate(input, constant(true));
 Validates that a value is `null`.
 
 ```ts
-import { null_, validate } from "decode-kit";
+import { null_, validate } from "valleys";
 
 validate(input, null_());
 // input is typed as null
@@ -127,7 +127,7 @@ validate(input, null_());
 Validates that a value is `undefined`.
 
 ```ts
-import { undefined_, validate } from "decode-kit";
+import { undefined_, validate } from "valleys";
 
 validate(input, undefined_());
 // input is typed as undefined
@@ -138,7 +138,7 @@ validate(input, undefined_());
 Validates that a value is a valid ISO 8601 datetime string with timezone.
 
 ```ts
-import { iso8601, validate } from "decode-kit";
+import { iso8601, validate } from "valleys";
 
 validate(input, iso8601());
 // input is typed as Iso8601 (a branded string type)
@@ -154,7 +154,7 @@ validate(input, iso8601());
 Validates arrays with optional item validation and rules.
 
 ```ts
-import { array, string, number, validate } from "decode-kit";
+import { array, string, number, validate } from "valleys";
 
 // Array of any values
 validate(input, array());
@@ -181,7 +181,7 @@ validate(input, array(number(), { minLength: 3 }));
 Validates objects with optional property validation.
 
 ```ts
-import { object, string, number, boolean, validate } from "decode-kit";
+import { object, string, number, boolean, validate } from "valleys";
 
 // Any object
 validate(input, object());
@@ -205,10 +205,10 @@ validate(
 
 #### `or()`
 
-Creates a union type decoder that accepts any of the provided decoders.
+Creates a union type validator that accepts any of the provided validators.
 
 ```ts
-import { or, string, number, null_, validate } from "decode-kit";
+import { or, string, number, null_, validate } from "valleys";
 
 // String or number
 validate(input, or([string(), number()]));
@@ -230,22 +230,22 @@ validate(
 
 #### `InferOutputOf<D>`
 
-A type utility that extracts the output type from a decoder. Useful when you need to reference the type that a decoder validates.
+A type utility that extracts the output type from a validator. Useful when you need to reference the type that a validaator validates.
 
 ```ts
-import { object, string, number, InferOutputOf } from "decode-kit";
+import { object, string, number, InferOutputOf } from "valleys";
 
-const userDecoder = object({ id: number(), name: string() });
-type User = InferOutputOf<typeof userDecoder>;
+const userValidator = object({ id: number(), name: string() });
+type User = InferOutputOf<typeof userValidator>;
 // User is { id: number; name: string }
 ```
 
 #### `Iso8601`
 
-A branded string type for ISO 8601 date strings that can only be obtained after validating using the `iso8601` decoder.
+A branded string type for ISO 8601 date strings that can only be obtained after validating using the `iso8601` validator.
 
 ```ts
-import { Iso8601 } from "decode-kit";
+import { Iso8601 } from "valleys";
 
 function formatDate(date: Iso8601): string {
   return new Date(date).toLocaleDateString();

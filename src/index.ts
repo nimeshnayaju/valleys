@@ -1,7 +1,7 @@
 declare const brand: unique symbol;
 type Brand<T, TBrand extends string> = T & { [brand]: TBrand };
 
-type Decoder<
+type Validator<
   Output,
   Schema extends { type: string } = { type: string },
   RuleSet extends Record<string, unknown> = Record<string, unknown>
@@ -9,31 +9,31 @@ type Decoder<
   /**
    * This is an unstable API. It may change in future.
    *
-   * Decode a value using the decoder.
-   * @param value - The value to decode.
-   * @returns The original value with narrowed type if decoding was successful. Throws `DecoderError` if decoding fails.
+   * Validate a value using the validator.
+   * @param value - The value to validate.
+   * @returns The original value with narrowed type if validation was successful. Throws `ValidationError` if validation fails.
    */
-  unstable_decode(value: unknown): Output;
+  unstable_validate(value: unknown): Output;
   schema: Schema;
   rules: RuleSet;
 };
 
 /**
- * Utility type that extracts the output type from a decoder. This allows you to get the TypeScript type that a decoder will produce.
+ * Utility type that extracts the output type from a validator. This allows you to get the TypeScript type that a validator will produce.
  *
  * @example
  * ```typescript
- * import { InferOutputOf, object, string, number, boolean, array } from 'decode-kit';
+ * import { InferOutputOf, object, string, number, boolean, array } from 'valleys';
  *
- * // Simple decoder types
- * const nameDecoder = string();
- * type Name = InferOutputOf<typeof nameDecoder>; // string
+ * // Simple validator types
+ * const nameValidator = string();
+ * type Name = InferOutputOf<typeof nameValidator>; // string
  *
- * const ageDecoder = number();
- * type Age = InferOutputOf<typeof ageDecoder>; // number
+ * const ageValidator = number();
+ * type Age = InferOutputOf<typeof ageValidator>; // number
  *
  * // Complex object type
- * const userDecoder = object({
+ * const userValidator = object({
  *   id: number(),
  *   name: string(),
  *   email: string(),
@@ -41,7 +41,7 @@ type Decoder<
  *   tags: array(string())
  * });
  *
- * type User = InferOutputOf<typeof userDecoder>;
+ * type User = InferOutputOf<typeof userValidator>;
  * // type User = {
  * //   id: number;
  * //   name: string;
@@ -50,30 +50,25 @@ type Decoder<
  * //   tags: string[];
  * // }
  */
-export type InferOutputOf<D extends Decoder<any, any, any>> = D extends Decoder<
-  infer T,
-  any,
-  any
->
-  ? T
-  : never;
+export type InferOutputOf<D extends Validator<any, any, any>> =
+  D extends Validator<infer T, any, any> ? T : never;
 
 /* -------------------------------------------------------------------------------------------------
  * string
  * -----------------------------------------------------------------------------------------------*/
 
 /**
- * Creates a decoder that validates string values.
+ * Creates a validator that validates string values.
  *
  * @param rules.minLength - Minimum allowed string length
  * @param rules.maxLength - Maximum allowed string length
- * @returns A decoder for string values
+ * @returns A validator for string values
  */
-export function string(): Decoder<string, { type: "string" }>;
+export function string(): Validator<string, { type: "string" }>;
 export function string(rules?: {
   minLength?: number;
   maxLength?: number;
-}): Decoder<
+}): Validator<
   string,
   { type: "string" },
   { minLength?: number; maxLength?: number }
@@ -81,15 +76,15 @@ export function string(rules?: {
 export function string(rules?: {
   minLength?: number;
   maxLength?: number;
-}): Decoder<
+}): Validator<
   string,
   { type: "string" },
   { minLength?: number; maxLength?: number }
 > {
   return {
-    unstable_decode(value: unknown): string {
+    unstable_validate(value: unknown): string {
       if (typeof value !== "string") {
-        throw new DecoderError(this.schema, this.rules, {
+        throw new ValidationError(this.schema, this.rules, {
           type: "schema",
           data: value,
         });
@@ -97,7 +92,7 @@ export function string(rules?: {
 
       const minLength = rules?.minLength;
       if (minLength !== undefined && value.length < minLength) {
-        throw new DecoderError(this.schema, this.rules, {
+        throw new ValidationError(this.schema, this.rules, {
           type: "rule",
           rule: "minLength",
           data: value,
@@ -106,7 +101,7 @@ export function string(rules?: {
 
       const maxLength = rules?.maxLength;
       if (maxLength !== undefined && value.length > maxLength) {
-        throw new DecoderError(this.schema, this.rules, {
+        throw new ValidationError(this.schema, this.rules, {
           type: "rule",
           rule: "maxLength",
           data: value,
@@ -128,25 +123,25 @@ export function string(rules?: {
  * -----------------------------------------------------------------------------------------------*/
 
 /**
- * Creates a decoder that validates number values. Only accepts finite numbers (not NaN or Infinity).
+ * Creates a validator that validates number values. Only accepts finite numbers (not NaN or Infinity).
  *
  * @param rules.min - Minimum allowed value (inclusive)
  * @param rules.max - Maximum allowed value (inclusive)
- * @returns A decoder for number values
+ * @returns A validator for number values
  */
-export function number(): Decoder<number, { type: "number" }>;
+export function number(): Validator<number, { type: "number" }>;
 export function number(rules?: {
   min?: number;
   max?: number;
-}): Decoder<number, { type: "number" }, { min?: number; max?: number }>;
+}): Validator<number, { type: "number" }, { min?: number; max?: number }>;
 export function number(rules?: {
   min?: number;
   max?: number;
-}): Decoder<number, { type: "number" }, { min?: number; max?: number }> {
+}): Validator<number, { type: "number" }, { min?: number; max?: number }> {
   return {
-    unstable_decode(value: unknown): number {
+    unstable_validate(value: unknown): number {
       if (typeof value !== "number" || !Number.isFinite(value)) {
-        throw new DecoderError(this.schema, this.rules, {
+        throw new ValidationError(this.schema, this.rules, {
           type: "schema",
           data: value,
         });
@@ -154,7 +149,7 @@ export function number(rules?: {
 
       const min = rules?.min;
       if (min !== undefined && value < min) {
-        throw new DecoderError(this.schema, this.rules, {
+        throw new ValidationError(this.schema, this.rules, {
           type: "rule",
           rule: "min",
           data: value,
@@ -163,7 +158,7 @@ export function number(rules?: {
 
       const max = rules?.max;
       if (max !== undefined && value > max) {
-        throw new DecoderError(this.schema, this.rules, {
+        throw new ValidationError(this.schema, this.rules, {
           type: "rule",
           rule: "max",
           data: value,
@@ -182,15 +177,15 @@ export function number(rules?: {
  * -----------------------------------------------------------------------------------------------*/
 
 /**
- * Creates a decoder that validates boolean values. Only accepts true or false.
+ * Creates a validator that validates boolean values. Only accepts true or false.
  *
- * @returns A decoder for boolean values
+ * @returns A validator for boolean values
  */
-export function boolean(): Decoder<boolean, { type: "boolean" }> {
+export function boolean(): Validator<boolean, { type: "boolean" }> {
   return {
-    unstable_decode(value: unknown): boolean {
+    unstable_validate(value: unknown): boolean {
       if (typeof value !== "boolean") {
-        throw new DecoderError(this.schema, this.rules, {
+        throw new ValidationError(this.schema, this.rules, {
           type: "schema",
           data: value,
         });
@@ -207,18 +202,18 @@ export function boolean(): Decoder<boolean, { type: "boolean" }> {
  * -----------------------------------------------------------------------------------------------*/
 
 /**
- * Creates a decoder that validates literal/constant values. Accepts only the exact value provided.
+ * Creates a validator that validates literal/constant values. Accepts only the exact value provided.
  *
  * @param value - The literal value to match against
- * @returns A decoder for the specified constant value
+ * @returns A validator for the specified constant value
  */
 export function constant<
   T extends string | number | boolean | symbol | undefined | null
->(value: T): Decoder<T, { type: "constant"; value: string }> {
+>(value: T): Validator<T, { type: "constant"; value: string }> {
   return {
-    unstable_decode(input: unknown): T {
+    unstable_validate(input: unknown): T {
       if (input !== value) {
-        throw new DecoderError(this.schema, this.rules, {
+        throw new ValidationError(this.schema, this.rules, {
           type: "schema",
           data: input,
         });
@@ -235,51 +230,51 @@ export function constant<
  * -----------------------------------------------------------------------------------------------*/
 
 /**
- * Creates a decoder that validates array values.
+ * Creates a validator that validates array values.
  *
- * @param decoder - Optional decoder for array items
+ * @param validator - Optional validator for array items
  * @param rules - Optional validation rules
- * @returns A decoder for array values
+ * @returns A validator for array values
  */
 export function array(rules: {
   minLength?: number;
-}): Decoder<Array<unknown>, { type: "array" }, { minLength?: number }>;
-export function array(): Decoder<
+}): Validator<Array<unknown>, { type: "array" }, { minLength?: number }>;
+export function array(): Validator<
   Array<unknown>,
   { type: "array" },
   { minLength?: number }
 >;
-export function array<D extends Decoder<any, any, any>>(
-  decoder: D,
+export function array<D extends Validator<any, any, any>>(
+  validator: D,
   rules?: { minLength?: number }
-): Decoder<
+): Validator<
   Array<InferOutputOf<D>>,
   { type: "array"; item: D["schema"] },
   { minLength?: number }
 >;
-export function array<D extends Decoder<any, any, any>>(
-  decoderOrRules?: D | { minLength?: number },
+export function array<D extends Validator<any, any, any>>(
+  validatorOrRules?: D | { minLength?: number },
   rules?: { minLength?: number }
-): Decoder<
+): Validator<
   Array<InferOutputOf<D>>,
   { type: "array"; item?: D["schema"] },
   { minLength?: number }
 > {
-  let decoder: D | undefined;
+  let validator: D | undefined;
   if (
-    typeof decoderOrRules === "object" &&
-    "unstable_decode" in decoderOrRules
+    typeof validatorOrRules === "object" &&
+    "unstable_validate" in validatorOrRules
   ) {
-    decoder = decoderOrRules;
+    validator = validatorOrRules;
     rules = { minLength: rules?.minLength };
   } else {
-    rules = { minLength: decoderOrRules?.minLength };
+    rules = { minLength: validatorOrRules?.minLength };
   }
 
   return {
-    unstable_decode(value: unknown): Array<InferOutputOf<D>> {
+    unstable_validate(value: unknown): Array<InferOutputOf<D>> {
       if (!Array.isArray(value)) {
-        throw new DecoderError(this.schema, this.rules, {
+        throw new ValidationError(this.schema, this.rules, {
           type: "schema",
           data: value,
         });
@@ -287,23 +282,23 @@ export function array<D extends Decoder<any, any, any>>(
 
       const minLength = rules?.minLength;
       if (minLength !== undefined && value.length < minLength) {
-        throw new DecoderError(this.schema, this.rules, {
+        throw new ValidationError(this.schema, this.rules, {
           type: "rule",
           rule: "minLength",
           data: value,
         });
       }
 
-      if (decoder === undefined) {
+      if (validator === undefined) {
         return value;
       }
 
       for (let i = 0; i < value.length; i++) {
         try {
-          decoder.unstable_decode(value[i]);
+          validator.unstable_validate(value[i]);
         } catch (err) {
-          if (err instanceof DecoderError) {
-            throw new DecoderError(err.schema, err.rules, {
+          if (err instanceof ValidationError) {
+            throw new ValidationError(err.schema, err.rules, {
               type: "item",
               index: i,
               data: value,
@@ -315,7 +310,7 @@ export function array<D extends Decoder<any, any, any>>(
       }
       return value;
     },
-    schema: { type: "array", item: decoder?.schema },
+    schema: { type: "array", item: validator?.schema },
     rules: { minLength: rules?.minLength },
   };
 }
@@ -323,11 +318,11 @@ export function array<D extends Decoder<any, any, any>>(
 /* -------------------------------------------------------------------------------------------------
  * object
  * -----------------------------------------------------------------------------------------------*/
-type OptionalKeys<T extends Record<string, Decoder<any, any, any>>> = {
+type OptionalKeys<T extends Record<string, Validator<any, any, any>>> = {
   [K in keyof T]: undefined extends InferOutputOf<T[K]> ? K : never;
 }[keyof T];
 
-type RequiredKeys<T extends Record<string, Decoder<any, any, any>>> = Exclude<
+type RequiredKeys<T extends Record<string, Validator<any, any, any>>> = Exclude<
   keyof T,
   OptionalKeys<T>
 >;
@@ -336,7 +331,7 @@ type Merge<T> = T extends (...args: readonly unknown[]) => unknown
   ? T
   : { [K in keyof T]: T[K] };
 
-type ObjectDecoderType<T extends Record<string, Decoder<any, any, any>>> =
+type ObjectValidatorType<T extends Record<string, Validator<any, any, any>>> =
   Merge<
     { [K in RequiredKeys<T>]: InferOutputOf<T[K]> } & {
       [K in OptionalKeys<T>]?: InferOutputOf<T[K]>;
@@ -344,54 +339,54 @@ type ObjectDecoderType<T extends Record<string, Decoder<any, any, any>>> =
   >;
 
 /**
- * Creates a decoder that validates object values.
+ * Creates a validator that validates object values.
  *
- * @param decoders - Optional object mapping property names to their decoders
- * @returns A decoder for object values
+ * @param validators - Optional object mapping property names to their validators
+ * @returns A validator for object values
  */
-export function object(): Decoder<
+export function object(): Validator<
   Record<string, unknown>,
   { type: "object"; properties: Record<string, { type: string }> }
 >;
-export function object<T extends Record<string, Decoder<any, any, any>>>(
-  decoders: T
-): Decoder<
-  ObjectDecoderType<T>,
+export function object<T extends Record<string, Validator<any, any, any>>>(
+  validators: T
+): Validator<
+  ObjectValidatorType<T>,
   { type: "object"; properties: { [K in keyof T]: T[K]["schema"] } }
 >;
-export function object<T extends Record<string, Decoder<any, any, any>>>(
-  decoders?: T
-): Decoder<
-  ObjectDecoderType<T>,
+export function object<T extends Record<string, Validator<any, any, any>>>(
+  validators?: T
+): Validator<
+  ObjectValidatorType<T>,
   { type: "object"; properties: Record<string, { type: string }> }
 > {
   return {
-    unstable_decode(value: unknown): ObjectDecoderType<T> {
+    unstable_validate(value: unknown): ObjectValidatorType<T> {
       if (
         value === null ||
         value === undefined ||
         typeof value !== "object" ||
         Object.prototype.toString.call(value) !== "[object Object]"
       ) {
-        throw new DecoderError(this.schema, this.rules, {
+        throw new ValidationError(this.schema, this.rules, {
           type: "schema",
           data: value,
         });
       }
 
-      if (decoders === undefined || Object.keys(decoders).length === 0) {
-        return value as ObjectDecoderType<T>;
+      if (validators === undefined || Object.keys(validators).length === 0) {
+        return value as ObjectValidatorType<T>;
       }
 
-      for (const key in decoders) {
+      for (const key in validators) {
         try {
-          const decoder = decoders[key];
-          if (!decoder) continue;
+          const validator = validators[key];
+          if (!validator) continue;
 
-          decoder.unstable_decode((value as any)[key]);
+          validator.unstable_validate((value as any)[key]);
         } catch (err) {
-          if (err instanceof DecoderError) {
-            throw new DecoderError(err.schema, err.rules, {
+          if (err instanceof ValidationError) {
+            throw new ValidationError(err.schema, err.rules, {
               type: "property",
               property: key,
               path: err.path,
@@ -401,14 +396,14 @@ export function object<T extends Record<string, Decoder<any, any, any>>>(
           throw err;
         }
       }
-      return value as ObjectDecoderType<T>;
+      return value as ObjectValidatorType<T>;
     },
     schema: {
       type: "object",
       properties: Object.fromEntries(
-        Object.entries(decoders || {}).map(([key, decoder]) => [
+        Object.entries(validators || {}).map(([key, validator]) => [
           key,
-          decoder.schema,
+          validator.schema,
         ])
       ) as { [K in keyof T]: T[K]["schema"] },
     },
@@ -428,22 +423,22 @@ const iso8601Regex =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:[.]\d+)?(?:Z|[+-]\d{2}:?\d{2})$/;
 
 /**
- * Creates a decoder that validates ISO 8601 date-time strings. Accepts datetime strings in the format: YYYY-MM-DDTHH:mm:ss[.sss][Z|±HH:mm]
+ * Creates a validator that validates ISO 8601 date-time strings. Accepts datetime strings in the format: YYYY-MM-DDTHH:mm:ss[.sss][Z|±HH:mm]
  *
- * @returns A decoder for ISO 8601 date-time strings
+ * @returns A validator for ISO 8601 date-time strings
  */
-export function iso8601(): Decoder<Iso8601, { type: "iso8601" }> {
+export function iso8601(): Validator<Iso8601, { type: "iso8601" }> {
   return {
-    unstable_decode(value: unknown): Iso8601 {
+    unstable_validate(value: unknown): Iso8601 {
       if (typeof value !== "string" || !iso8601Regex.test(value)) {
-        throw new DecoderError(this.schema, this.rules, {
+        throw new ValidationError(this.schema, this.rules, {
           type: "schema",
           data: value,
         });
       }
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) {
-        throw new DecoderError(this.schema, this.rules, {
+        throw new ValidationError(this.schema, this.rules, {
           type: "schema",
           data: value,
         });
@@ -460,35 +455,35 @@ export function iso8601(): Decoder<Iso8601, { type: "iso8601" }> {
  * -----------------------------------------------------------------------------------------------*/
 
 /**
- * Creates a decoder that validates values matching any of the provided decoders. Tries each decoder in order and returns the first successful result.
+ * Creates a validator that validates values matching any of the provided validators. Tries each validator in order and returns the first successful result.
  *
- * @param decoders - Array of decoders to try in order
- * @returns A decoder that accepts values matching any of the provided decoders
+ * @param validators - Array of validators to try in order
+ * @returns A validator that accepts values matching any of the provided validators
  */
-export function or<D extends readonly Decoder<any, any, any>[]>(
-  decoders: D
-): Decoder<
+export function or<D extends readonly Validator<any, any, any>[]>(
+  validators: D
+): Validator<
   InferOutputOf<D[number]>,
   { type: "or"; item: D[number]["schema"][] }
 > {
   return {
-    unstable_decode(value: unknown): InferOutputOf<D[number]> {
-      for (const decoder of decoders) {
+    unstable_validate(value: unknown): InferOutputOf<D[number]> {
+      for (const validator of validators) {
         try {
-          return decoder.unstable_decode(value);
+          return validator.unstable_validate(value);
         } catch (err) {
-          // If the error is not a DecoderError, rethrow it
-          if (!(err instanceof DecoderError)) throw err;
+          // If the error is not a ValidationError, rethrow it
+          if (!(err instanceof ValidationError)) throw err;
         }
       }
-      throw new DecoderError(this.schema, this.rules, {
+      throw new ValidationError(this.schema, this.rules, {
         type: "schema",
         data: value,
       });
     },
     schema: {
       type: "or",
-      item: decoders.map((decoder) => decoder.schema),
+      item: validators.map((validator) => validator.schema),
     },
     rules: {},
   };
@@ -499,15 +494,15 @@ export function or<D extends readonly Decoder<any, any, any>[]>(
  * -----------------------------------------------------------------------------------------------*/
 
 /**
- * Creates a decoder that validates null values. Only accepts the literal null value.
+ * Creates a validator that validates null values. Only accepts the literal null value.
  *
- * @returns A decoder for null values
+ * @returns A validator for null values
  */
-export function null_(): Decoder<null, { type: "null" }, {}> {
+export function null_(): Validator<null, { type: "null" }, {}> {
   return {
-    unstable_decode(value: unknown): null {
+    unstable_validate(value: unknown): null {
       if (value !== null) {
-        throw new DecoderError(this.schema, this.rules, {
+        throw new ValidationError(this.schema, this.rules, {
           type: "schema",
           data: value,
         });
@@ -524,15 +519,15 @@ export function null_(): Decoder<null, { type: "null" }, {}> {
  * -----------------------------------------------------------------------------------------------*/
 
 /**
- * Creates a decoder that validates undefined values. Only accepts the literal undefined value.
+ * Creates a validator that validates undefined values. Only accepts the literal undefined value.
  *
- * @returns A decoder for undefined values
+ * @returns A validator for undefined values
  */
-export function undefined_(): Decoder<undefined, { type: "undefined" }, {}> {
+export function undefined_(): Validator<undefined, { type: "undefined" }, {}> {
   return {
-    unstable_decode(value: unknown): undefined {
+    unstable_validate(value: unknown): undefined {
       if (value !== undefined) {
-        throw new DecoderError(this.schema, this.rules, {
+        throw new ValidationError(this.schema, this.rules, {
           type: "schema",
           data: value,
         });
@@ -594,7 +589,7 @@ type RuleDataType<S extends { type: string }> = S extends { type: "string" }
   ? Iso8601
   : never;
 
-export class DecoderError<
+export class ValidationError<
   S extends { type: string } = { type: string },
   R extends Record<string, unknown> = Record<string, unknown>
 > extends Error {
@@ -722,37 +717,37 @@ function formatErrorPath(
 }
 
 /**
- * Validates a value using a decoder and asserts its type. Throws a DecoderError if validation fails.
+ * Validates a value using a validator and asserts its type. Throws a ValidationError if validation fails.
  *
  * @param value - The value to validate
- * @param decoder - The decoder to use for validation
- * @throws {DecoderError} If the value doesn't match the decoder's schema
+ * @param validator - The validator to use for validation
+ * @throws {ValidationError} If the value doesn't match the validator's schema
  * @asserts value is InferOutputOf<D>
  *
  * @example
  * ```typescript
- * import { validate, object, string, number, array } from 'decode-kit';
+ * import { validate, object, string, number, array } from 'valleys';
  *
- * const userDecoder = object({
+ * const userValidator = object({
  *   id: number(),
  *   name: string(),
  *   email: string()
  * });
  *
- * validate(data, userDecoder);
+ * validate(data, userValidator);
  *
  * // TypeScript now knows input is { id: number; name: string; email: string; }
  * console.log(data.name); // ✅ No type errors
  * console.log(data.email.toUpperCase()); // ✅ String methods available
  */
-export function validate<D extends Decoder<any, any, any>>(
+export function validate<D extends Validator<any, any, any>>(
   value: unknown,
-  decoder: D
+  validator: D
 ): asserts value is InferOutputOf<D> {
   try {
-    decoder.unstable_decode(value);
+    validator.unstable_validate(value);
   } catch (err) {
-    if (err instanceof DecoderError) {
+    if (err instanceof ValidationError) {
       Error.captureStackTrace(err, validate);
     }
     throw err;

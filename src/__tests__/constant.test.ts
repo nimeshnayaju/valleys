@@ -1,73 +1,89 @@
 import { describe, expect, it } from "vitest";
-import { constant, DecoderError } from "../index";
+import { constant, ValidationError } from "../index";
 
 describe("constant", () => {
   describe("string constants", () => {
     it("should accept exact string matches", () => {
-      const decoder = constant("hello");
-      expect(decoder.unstable_decode("hello")).toBe("hello");
+      const validator = constant("hello");
+      expect(validator.unstable_validate("hello")).toBe("hello");
     });
 
     it("should reject different strings", () => {
-      const decoder = constant("hello");
-      expect(() => decoder.unstable_decode("Hello")).toThrowError(DecoderError);
-      expect(() => decoder.unstable_decode("hello ")).toThrowError(
-        DecoderError
+      const validator = constant("hello");
+      expect(() => validator.unstable_validate("Hello")).toThrowError(
+        ValidationError
       );
-      expect(() => decoder.unstable_decode(" hello")).toThrowError(
-        DecoderError
+      expect(() => validator.unstable_validate("hello ")).toThrowError(
+        ValidationError
       );
-      expect(() => decoder.unstable_decode("HELLO")).toThrowError(DecoderError);
-      expect(() => decoder.unstable_decode("")).toThrowError(DecoderError);
-      expect(() => decoder.unstable_decode("world")).toThrowError(DecoderError);
+      expect(() => validator.unstable_validate(" hello")).toThrowError(
+        ValidationError
+      );
+      expect(() => validator.unstable_validate("HELLO")).toThrowError(
+        ValidationError
+      );
+      expect(() => validator.unstable_validate("")).toThrowError(
+        ValidationError
+      );
+      expect(() => validator.unstable_validate("world")).toThrowError(
+        ValidationError
+      );
     });
 
     it("should work with empty strings", () => {
-      const decoder = constant("");
-      expect(decoder.unstable_decode("")).toBe("");
-      expect(() => decoder.unstable_decode(" ")).toThrowError(DecoderError);
-      expect(() => decoder.unstable_decode("a")).toThrowError(DecoderError);
+      const validator = constant("");
+      expect(validator.unstable_validate("")).toBe("");
+      expect(() => validator.unstable_validate(" ")).toThrowError(
+        ValidationError
+      );
+      expect(() => validator.unstable_validate("a")).toThrowError(
+        ValidationError
+      );
     });
 
     it("should work with special characters", () => {
       const special = "!@#$%^&*()";
-      const decoder = constant(special);
-      expect(decoder.unstable_decode(special)).toBe(special);
-      expect(() => decoder.unstable_decode("!@#$%^&*")).toThrowError(
-        DecoderError
+      const validator = constant(special);
+      expect(validator.unstable_validate(special)).toBe(special);
+      expect(() => validator.unstable_validate("!@#$%^&*")).toThrowError(
+        ValidationError
       );
     });
 
     it("should work with unicode and emojis", () => {
       const unicodeStr = "你好🌍";
-      const decoder = constant(unicodeStr);
-      expect(decoder.unstable_decode(unicodeStr)).toBe(unicodeStr);
-      expect(() => decoder.unstable_decode("你好")).toThrowError(DecoderError);
-      expect(() => decoder.unstable_decode("🌍")).toThrowError(DecoderError);
+      const validator = constant(unicodeStr);
+      expect(validator.unstable_validate(unicodeStr)).toBe(unicodeStr);
+      expect(() => validator.unstable_validate("你好")).toThrowError(
+        ValidationError
+      );
+      expect(() => validator.unstable_validate("🌍")).toThrowError(
+        ValidationError
+      );
     });
 
     it("should include string value in schema", () => {
-      const decoder = constant("test");
-      expect(decoder.schema).toEqual({ type: "constant", value: "test" });
+      const validator = constant("test");
+      expect(validator.schema).toEqual({ type: "constant", value: "test" });
     });
 
-    it("should throw DecoderError with full details for non-string violation", () => {
-      const decoder = constant("test");
+    it("should throw ValidationError with full details for non-string violation", () => {
+      const validator = constant("test");
       try {
-        decoder.unstable_decode("actual");
+        validator.unstable_validate("actual");
         expect.fail();
       } catch (error) {
-        expect(error).toBeInstanceOf(DecoderError);
-        expect((error as DecoderError).path).toEqual({
+        expect(error).toBeInstanceOf(ValidationError);
+        expect((error as ValidationError).path).toEqual({
           type: "schema",
           data: "actual",
         });
-        expect((error as DecoderError).schema).toEqual({
+        expect((error as ValidationError).schema).toEqual({
           type: "constant",
           value: "test",
         });
-        expect((error as DecoderError).rules).toEqual({});
-        expect((error as DecoderError).message).toBe(
+        expect((error as ValidationError).rules).toEqual({});
+        expect((error as ValidationError).message).toBe(
           'Validation failed due to schema mismatch; expected schema: {"type":"constant","value":"test"}; received value: "actual"'
         );
       }
@@ -76,102 +92,120 @@ describe("constant", () => {
 
   describe("number constants", () => {
     it("should accept exact number matches", () => {
-      const decoder = constant(42);
-      expect(decoder.unstable_decode(42)).toBe(42);
+      const validator = constant(42);
+      expect(validator.unstable_validate(42)).toBe(42);
     });
 
     it("should reject different numbers", () => {
-      const decoder = constant(42);
-      expect(() => decoder.unstable_decode(41)).toThrowError(DecoderError);
-      expect(() => decoder.unstable_decode(43)).toThrowError(DecoderError);
-      expect(decoder.unstable_decode(42.0)).toBe(42); // This should pass as 42 === 42.0
-      expect(() => decoder.unstable_decode(42.1)).toThrowError(DecoderError);
-      expect(() => decoder.unstable_decode(-42)).toThrowError(DecoderError);
+      const validator = constant(42);
+      expect(() => validator.unstable_validate(41)).toThrowError(
+        ValidationError
+      );
+      expect(() => validator.unstable_validate(43)).toThrowError(
+        ValidationError
+      );
+      expect(validator.unstable_validate(42.0)).toBe(42); // This should pass as 42 === 42.0
+      expect(() => validator.unstable_validate(42.1)).toThrowError(
+        ValidationError
+      );
+      expect(() => validator.unstable_validate(-42)).toThrowError(
+        ValidationError
+      );
     });
 
     it("should work with zero", () => {
-      const decoder = constant(0);
-      expect(decoder.unstable_decode(0)).toBe(0);
-      expect(decoder.unstable_decode(-0)).toBe(-0); // Returns -0 as is, but -0 === 0 passes the validation
-      expect(() => decoder.unstable_decode(1)).toThrowError(DecoderError);
-      expect(() => decoder.unstable_decode(false)).toThrowError(DecoderError);
+      const validator = constant(0);
+      expect(validator.unstable_validate(0)).toBe(0);
+      expect(validator.unstable_validate(-0)).toBe(-0); // Returns -0 as is, but -0 === 0 passes the validation
+      expect(() => validator.unstable_validate(1)).toThrowError(
+        ValidationError
+      );
+      expect(() => validator.unstable_validate(false)).toThrowError(
+        ValidationError
+      );
     });
 
     it("should work with negative numbers", () => {
-      const decoder = constant(-123);
-      expect(decoder.unstable_decode(-123)).toBe(-123);
-      expect(() => decoder.unstable_decode(123)).toThrowError(DecoderError);
+      const validator = constant(-123);
+      expect(validator.unstable_validate(-123)).toBe(-123);
+      expect(() => validator.unstable_validate(123)).toThrowError(
+        ValidationError
+      );
     });
 
     it("should work with decimal numbers", () => {
-      const decoder = constant(3.14);
-      expect(decoder.unstable_decode(3.14)).toBe(3.14);
-      expect(() => decoder.unstable_decode(3)).toThrowError(DecoderError);
-      expect(decoder.unstable_decode(3.14)).toBe(3.14); // Should pass as 3.14 === 3.140
+      const validator = constant(3.14);
+      expect(validator.unstable_validate(3.14)).toBe(3.14);
+      expect(() => validator.unstable_validate(3)).toThrowError(
+        ValidationError
+      );
+      expect(validator.unstable_validate(3.14)).toBe(3.14); // Should pass as 3.14 === 3.140
     });
 
     it("should work with very large numbers", () => {
       const largeNum = 9007199254740991; // Number.MAX_SAFE_INTEGER
-      const decoder = constant(largeNum);
-      expect(decoder.unstable_decode(largeNum)).toBe(largeNum);
-      expect(() => decoder.unstable_decode(largeNum - 1)).toThrowError(
-        DecoderError
+      const validator = constant(largeNum);
+      expect(validator.unstable_validate(largeNum)).toBe(largeNum);
+      expect(() => validator.unstable_validate(largeNum - 1)).toThrowError(
+        ValidationError
       );
     });
 
     it("should work with Infinity", () => {
-      const decoder = constant(Infinity);
-      expect(decoder.unstable_decode(Infinity)).toBe(Infinity);
-      expect(() => decoder.unstable_decode(-Infinity)).toThrowError(
-        DecoderError
+      const validator = constant(Infinity);
+      expect(validator.unstable_validate(Infinity)).toBe(Infinity);
+      expect(() => validator.unstable_validate(-Infinity)).toThrowError(
+        ValidationError
       );
-      expect(() => decoder.unstable_decode(Number.MAX_VALUE)).toThrowError(
-        DecoderError
+      expect(() => validator.unstable_validate(Number.MAX_VALUE)).toThrowError(
+        ValidationError
       );
     });
 
     it("should work with -Infinity", () => {
-      const decoder = constant(-Infinity);
-      expect(decoder.unstable_decode(-Infinity)).toBe(-Infinity);
-      expect(() => decoder.unstable_decode(Infinity)).toThrowError(
-        DecoderError
+      const validator = constant(-Infinity);
+      expect(validator.unstable_validate(-Infinity)).toBe(-Infinity);
+      expect(() => validator.unstable_validate(Infinity)).toThrowError(
+        ValidationError
       );
-      expect(() => decoder.unstable_decode(-Number.MAX_VALUE)).toThrowError(
-        DecoderError
+      expect(() => validator.unstable_validate(-Number.MAX_VALUE)).toThrowError(
+        ValidationError
       );
     });
 
     it("should handle NaN properly", () => {
-      const decoder = constant(NaN);
+      const validator = constant(NaN);
       // NaN !== NaN in JavaScript, so this should fail
-      expect(() => decoder.unstable_decode(NaN)).toThrowError(DecoderError);
-      expect(() => decoder.unstable_decode(Number.NaN)).toThrowError(
-        DecoderError
+      expect(() => validator.unstable_validate(NaN)).toThrowError(
+        ValidationError
+      );
+      expect(() => validator.unstable_validate(Number.NaN)).toThrowError(
+        ValidationError
       );
     });
 
     it("should include number value in schema as string", () => {
-      const decoder = constant(42);
-      expect(decoder.schema).toEqual({ type: "constant", value: "42" });
+      const validator = constant(42);
+      expect(validator.schema).toEqual({ type: "constant", value: "42" });
     });
 
-    it("should throw DecoderError with full details for non-number violation", () => {
-      const decoder = constant(42);
+    it("should throw ValidationError with full details for non-number violation", () => {
+      const validator = constant(42);
       try {
-        decoder.unstable_decode("actual");
+        validator.unstable_validate("actual");
         expect.fail();
       } catch (error) {
-        expect(error).toBeInstanceOf(DecoderError);
-        expect((error as DecoderError).path).toEqual({
+        expect(error).toBeInstanceOf(ValidationError);
+        expect((error as ValidationError).path).toEqual({
           type: "schema",
           data: "actual",
         });
-        expect((error as DecoderError).schema).toEqual({
+        expect((error as ValidationError).schema).toEqual({
           type: "constant",
           value: "42",
         });
-        expect((error as DecoderError).rules).toEqual({});
-        expect((error as DecoderError).message).toBe(
+        expect((error as ValidationError).rules).toEqual({});
+        expect((error as ValidationError).message).toBe(
           'Validation failed due to schema mismatch; expected schema: {"type":"constant","value":"42"}; received value: "actual"'
         );
       }
@@ -180,69 +214,80 @@ describe("constant", () => {
 
   describe("boolean constants", () => {
     it("should accept exact boolean matches", () => {
-      const trueDecoder = constant(true);
-      expect(trueDecoder.unstable_decode(true)).toBe(true);
+      const truevalidator = constant(true);
+      expect(truevalidator.unstable_validate(true)).toBe(true);
 
-      const falseDecoder = constant(false);
-      expect(falseDecoder.unstable_decode(false)).toBe(false);
+      const falsevalidator = constant(false);
+      expect(falsevalidator.unstable_validate(false)).toBe(false);
     });
 
     it("should reject opposite boolean", () => {
-      const trueDecoder = constant(true);
-      expect(() => trueDecoder.unstable_decode(false)).toThrowError(
-        DecoderError
+      const truevalidator = constant(true);
+      expect(() => truevalidator.unstable_validate(false)).toThrowError(
+        ValidationError
       );
 
-      const falseDecoder = constant(false);
-      expect(() => falseDecoder.unstable_decode(true)).toThrowError(
-        DecoderError
+      const falsevalidator = constant(false);
+      expect(() => falsevalidator.unstable_validate(true)).toThrowError(
+        ValidationError
       );
     });
 
     it("should reject truthy/falsy values", () => {
-      const trueDecoder = constant(true);
-      expect(() => trueDecoder.unstable_decode(1)).toThrowError(DecoderError);
-      expect(() => trueDecoder.unstable_decode("true")).toThrowError(
-        DecoderError
+      const truevalidator = constant(true);
+      expect(() => truevalidator.unstable_validate(1)).toThrowError(
+        ValidationError
       );
-      expect(() => trueDecoder.unstable_decode({})).toThrowError(DecoderError);
+      expect(() => truevalidator.unstable_validate("true")).toThrowError(
+        ValidationError
+      );
+      expect(() => truevalidator.unstable_validate({})).toThrowError(
+        ValidationError
+      );
 
-      const falseDecoder = constant(false);
-      expect(() => falseDecoder.unstable_decode(0)).toThrowError(DecoderError);
-      expect(() => falseDecoder.unstable_decode("")).toThrowError(DecoderError);
-      expect(() => falseDecoder.unstable_decode(null)).toThrowError(
-        DecoderError
+      const falsevalidator = constant(false);
+      expect(() => falsevalidator.unstable_validate(0)).toThrowError(
+        ValidationError
       );
-      expect(() => falseDecoder.unstable_decode(undefined)).toThrowError(
-        DecoderError
+      expect(() => falsevalidator.unstable_validate("")).toThrowError(
+        ValidationError
+      );
+      expect(() => falsevalidator.unstable_validate(null)).toThrowError(
+        ValidationError
+      );
+      expect(() => falsevalidator.unstable_validate(undefined)).toThrowError(
+        ValidationError
       );
     });
 
     it("should include boolean value in schema as string", () => {
-      const trueDecoder = constant(true);
-      expect(trueDecoder.schema).toEqual({ type: "constant", value: "true" });
+      const truevalidator = constant(true);
+      expect(truevalidator.schema).toEqual({ type: "constant", value: "true" });
 
-      const falseDecoder = constant(false);
-      expect(falseDecoder.schema).toEqual({ type: "constant", value: "false" });
+      const falsevalidator = constant(false);
+      expect(falsevalidator.schema).toEqual({
+        type: "constant",
+        value: "false",
+      });
     });
 
-    it("should throw DecoderError with full details for non-boolean violation", () => {
-      const decoder = constant(true);
+    it("should throw ValidationError with full details for non-boolean violation", () => {
+      const validator = constant(true);
       try {
-        decoder.unstable_decode("actual");
+        validator.unstable_validate("actual");
         expect.fail();
       } catch (error) {
-        expect(error).toBeInstanceOf(DecoderError);
-        expect((error as DecoderError).path).toEqual({
+        expect(error).toBeInstanceOf(ValidationError);
+        expect((error as ValidationError).path).toEqual({
           type: "schema",
           data: "actual",
         });
-        expect((error as DecoderError).schema).toEqual({
+        expect((error as ValidationError).schema).toEqual({
           type: "constant",
           value: "true",
         });
-        expect((error as DecoderError).rules).toEqual({});
-        expect((error as DecoderError).message).toBe(
+        expect((error as ValidationError).rules).toEqual({});
+        expect((error as ValidationError).message).toBe(
           'Validation failed due to schema mismatch; expected schema: {"type":"constant","value":"true"}; received value: "actual"'
         );
       }
@@ -252,69 +297,75 @@ describe("constant", () => {
   describe("symbol constants", () => {
     it("should accept exact symbol matches", () => {
       const sym = Symbol("test");
-      const decoder = constant(sym);
-      expect(decoder.unstable_decode(sym)).toBe(sym);
+      const validator = constant(sym);
+      expect(validator.unstable_validate(sym)).toBe(sym);
     });
 
     it("should reject different symbols", () => {
       const sym1 = Symbol("test");
       const sym2 = Symbol("test");
-      const decoder = constant(sym1);
-      expect(() => decoder.unstable_decode(sym2)).toThrowError(DecoderError);
+      const validator = constant(sym1);
+      expect(() => validator.unstable_validate(sym2)).toThrowError(
+        ValidationError
+      );
     });
 
     it("should reject non-symbol values", () => {
       const sym = Symbol("test");
-      const decoder = constant(sym);
-      expect(() => decoder.unstable_decode("Symbol(test)")).toThrowError(
-        DecoderError
+      const validator = constant(sym);
+      expect(() => validator.unstable_validate("Symbol(test)")).toThrowError(
+        ValidationError
       );
-      expect(() => decoder.unstable_decode("test")).toThrowError(DecoderError);
-      expect(() => decoder.unstable_decode(Symbol)).toThrowError(DecoderError);
+      expect(() => validator.unstable_validate("test")).toThrowError(
+        ValidationError
+      );
+      expect(() => validator.unstable_validate(Symbol)).toThrowError(
+        ValidationError
+      );
     });
 
     it("should work with Symbol.for", () => {
       const globalSym = Symbol.for("global");
-      const decoder = constant(globalSym);
-      expect(decoder.unstable_decode(Symbol.for("global"))).toBe(globalSym);
-      expect(() => decoder.unstable_decode(Symbol("global"))).toThrowError(
-        DecoderError
+      const validator = constant(globalSym);
+      expect(validator.unstable_validate(Symbol.for("global"))).toBe(globalSym);
+      expect(() => validator.unstable_validate(Symbol("global"))).toThrowError(
+        ValidationError
       );
     });
 
     it("should include symbol in schema as string", () => {
       const sym = Symbol("test");
-      const decoder = constant(sym);
-      expect(decoder.schema).toEqual({
+      const validator = constant(sym);
+      expect(validator.schema).toEqual({
         type: "constant",
         value: "Symbol(test)",
       });
 
       const symNoDesc = Symbol();
-      const decoderNoDesc = constant(symNoDesc);
-      expect(decoderNoDesc.schema).toEqual({
+      const validatorNoDesc = constant(symNoDesc);
+      expect(validatorNoDesc.schema).toEqual({
         type: "constant",
         value: "Symbol()",
       });
     });
 
-    it("should throw DecoderError with full details for non-symbol violation", () => {
-      const decoder = constant(Symbol("test"));
+    it("should throw ValidationError with full details for non-symbol violation", () => {
+      const validator = constant(Symbol("test"));
       try {
-        decoder.unstable_decode("actual");
+        validator.unstable_validate("actual");
         expect.fail();
       } catch (error) {
-        expect(error).toBeInstanceOf(DecoderError);
-        expect((error as DecoderError).path).toEqual({
+        expect(error).toBeInstanceOf(ValidationError);
+        expect((error as ValidationError).path).toEqual({
           type: "schema",
           data: "actual",
         });
-        expect((error as DecoderError).schema).toEqual({
+        expect((error as ValidationError).schema).toEqual({
           type: "constant",
           value: "Symbol(test)",
         });
-        expect((error as DecoderError).rules).toEqual({});
-        expect((error as DecoderError).message).toBe(
+        expect((error as ValidationError).rules).toEqual({});
+        expect((error as ValidationError).message).toBe(
           'Validation failed due to schema mismatch; expected schema: {"type":"constant","value":"Symbol(test)"}; received value: "actual"'
         );
       }
@@ -323,45 +374,57 @@ describe("constant", () => {
 
   describe("null constant", () => {
     it("should accept null", () => {
-      const decoder = constant(null);
-      expect(decoder.unstable_decode(null)).toBe(null);
+      const validator = constant(null);
+      expect(validator.unstable_validate(null)).toBe(null);
     });
 
     it("should reject non-null values", () => {
-      const decoder = constant(null);
-      expect(() => decoder.unstable_decode(undefined)).toThrowError(
-        DecoderError
+      const validator = constant(null);
+      expect(() => validator.unstable_validate(undefined)).toThrowError(
+        ValidationError
       );
-      expect(() => decoder.unstable_decode(0)).toThrowError(DecoderError);
-      expect(() => decoder.unstable_decode(false)).toThrowError(DecoderError);
-      expect(() => decoder.unstable_decode("")).toThrowError(DecoderError);
-      expect(() => decoder.unstable_decode("null")).toThrowError(DecoderError);
-      expect(() => decoder.unstable_decode({})).toThrowError(DecoderError);
-      expect(() => decoder.unstable_decode([])).toThrowError(DecoderError);
+      expect(() => validator.unstable_validate(0)).toThrowError(
+        ValidationError
+      );
+      expect(() => validator.unstable_validate(false)).toThrowError(
+        ValidationError
+      );
+      expect(() => validator.unstable_validate("")).toThrowError(
+        ValidationError
+      );
+      expect(() => validator.unstable_validate("null")).toThrowError(
+        ValidationError
+      );
+      expect(() => validator.unstable_validate({})).toThrowError(
+        ValidationError
+      );
+      expect(() => validator.unstable_validate([])).toThrowError(
+        ValidationError
+      );
     });
 
     it("should include null in schema as string", () => {
-      const decoder = constant(null);
-      expect(decoder.schema).toEqual({ type: "constant", value: "null" });
+      const validator = constant(null);
+      expect(validator.schema).toEqual({ type: "constant", value: "null" });
     });
 
-    it("should throw DecoderError with full details for non-null violation", () => {
-      const decoder = constant(null);
+    it("should throw ValidationError with full details for non-null violation", () => {
+      const validator = constant(null);
       try {
-        decoder.unstable_decode("actual");
+        validator.unstable_validate("actual");
         expect.fail();
       } catch (error) {
-        expect(error).toBeInstanceOf(DecoderError);
-        expect((error as DecoderError).path).toEqual({
+        expect(error).toBeInstanceOf(ValidationError);
+        expect((error as ValidationError).path).toEqual({
           type: "schema",
           data: "actual",
         });
-        expect((error as DecoderError).schema).toEqual({
+        expect((error as ValidationError).schema).toEqual({
           type: "constant",
           value: "null",
         });
-        expect((error as DecoderError).rules).toEqual({});
-        expect((error as DecoderError).message).toBe(
+        expect((error as ValidationError).rules).toEqual({});
+        expect((error as ValidationError).message).toBe(
           'Validation failed due to schema mismatch; expected schema: {"type":"constant","value":"null"}; received value: "actual"'
         );
       }
@@ -370,45 +433,60 @@ describe("constant", () => {
 
   describe("undefined constant", () => {
     it("should accept undefined", () => {
-      const decoder = constant(undefined);
-      expect(decoder.unstable_decode(undefined)).toBe(undefined);
+      const validator = constant(undefined);
+      expect(validator.unstable_validate(undefined)).toBe(undefined);
     });
 
     it("should reject non-undefined values", () => {
-      const decoder = constant(undefined);
-      expect(() => decoder.unstable_decode(null)).toThrowError(DecoderError);
-      expect(() => decoder.unstable_decode(0)).toThrowError(DecoderError);
-      expect(() => decoder.unstable_decode(false)).toThrowError(DecoderError);
-      expect(() => decoder.unstable_decode("")).toThrowError(DecoderError);
-      expect(() => decoder.unstable_decode("undefined")).toThrowError(
-        DecoderError
+      const validator = constant(undefined);
+      expect(() => validator.unstable_validate(null)).toThrowError(
+        ValidationError
       );
-      expect(() => decoder.unstable_decode({})).toThrowError(DecoderError);
-      expect(() => decoder.unstable_decode([])).toThrowError(DecoderError);
+      expect(() => validator.unstable_validate(0)).toThrowError(
+        ValidationError
+      );
+      expect(() => validator.unstable_validate(false)).toThrowError(
+        ValidationError
+      );
+      expect(() => validator.unstable_validate("")).toThrowError(
+        ValidationError
+      );
+      expect(() => validator.unstable_validate("undefined")).toThrowError(
+        ValidationError
+      );
+      expect(() => validator.unstable_validate({})).toThrowError(
+        ValidationError
+      );
+      expect(() => validator.unstable_validate([])).toThrowError(
+        ValidationError
+      );
     });
 
     it("should include undefined in schema as string", () => {
-      const decoder = constant(undefined);
-      expect(decoder.schema).toEqual({ type: "constant", value: "undefined" });
+      const validator = constant(undefined);
+      expect(validator.schema).toEqual({
+        type: "constant",
+        value: "undefined",
+      });
     });
 
-    it("should throw DecoderError with full details for non-undefined violation", () => {
-      const decoder = constant(undefined);
+    it("should throw ValidationError with full details for non-undefined violation", () => {
+      const validator = constant(undefined);
       try {
-        decoder.unstable_decode("actual");
+        validator.unstable_validate("actual");
         expect.fail();
       } catch (error) {
-        expect(error).toBeInstanceOf(DecoderError);
-        expect((error as DecoderError).path).toEqual({
+        expect(error).toBeInstanceOf(ValidationError);
+        expect((error as ValidationError).path).toEqual({
           type: "schema",
           data: "actual",
         });
-        expect((error as DecoderError).schema).toEqual({
+        expect((error as ValidationError).schema).toEqual({
           type: "constant",
           value: "undefined",
         });
-        expect((error as DecoderError).rules).toEqual({});
-        expect((error as DecoderError).message).toBe(
+        expect((error as ValidationError).rules).toEqual({});
+        expect((error as ValidationError).message).toBe(
           'Validation failed due to schema mismatch; expected schema: {"type":"constant","value":"undefined"}; received value: "actual"'
         );
       }

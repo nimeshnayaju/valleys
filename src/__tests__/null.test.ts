@@ -1,133 +1,173 @@
 import { describe, expect, it } from "vitest";
-import { null_, DecoderError } from "../index";
+import { null_, ValidationError } from "../index";
 
 describe("null_", () => {
   it("should accept null values", () => {
-    const decoder = null_();
-    expect(decoder.unstable_decode(null)).toBe(null);
+    const validator = null_();
+    expect(validator.unstable_validate(null)).toBe(null);
   });
 
   it("should reject non-null values", () => {
-    const decoder = null_();
+    const validator = null_();
 
     // Undefined
-    expect(() => decoder.unstable_decode(undefined)).toThrowError(DecoderError);
+    expect(() => validator.unstable_validate(undefined)).toThrowError(
+      ValidationError
+    );
 
     // Booleans
-    expect(() => decoder.unstable_decode(true)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(false)).toThrowError(DecoderError);
+    expect(() => validator.unstable_validate(true)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(false)).toThrowError(
+      ValidationError
+    );
 
     // Numbers
-    expect(() => decoder.unstable_decode(0)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(1)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(-1)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(123)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(3.14)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(Infinity)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(-Infinity)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(NaN)).toThrowError(DecoderError);
+    expect(() => validator.unstable_validate(0)).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate(1)).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate(-1)).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate(123)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(3.14)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(Infinity)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(-Infinity)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(NaN)).toThrowError(
+      ValidationError
+    );
 
     // Strings
-    expect(() => decoder.unstable_decode("null")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode("NULL")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode("Null")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode("")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(" ")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode("0")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode("false")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode("undefined")).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate("null")).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate("NULL")).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate("Null")).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate("")).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate(" ")).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate("0")).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate("false")).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate("undefined")).toThrowError(
+      ValidationError
     );
 
     // Objects and arrays
-    expect(() => decoder.unstable_decode({})).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode([])).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode([null])).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode({ value: null })).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate({})).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate([])).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate([null])).toThrowError(
+      ValidationError
     );
-    expect(() => decoder.unstable_decode(new Object())).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate({ value: null })).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(new Object())).toThrowError(
+      ValidationError
     );
 
     // Functions
-    expect(() => decoder.unstable_decode(() => null)).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate(() => null)).toThrowError(
+      ValidationError
     );
     expect(() =>
-      decoder.unstable_decode(function () {
+      validator.unstable_validate(function () {
         return null;
       })
-    ).toThrowError(DecoderError);
+    ).toThrowError(ValidationError);
 
     // Symbols and other types
-    expect(() => decoder.unstable_decode(Symbol("null"))).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate(Symbol("null"))).toThrowError(
+      ValidationError
     );
-    expect(() => decoder.unstable_decode(new Date())).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate(new Date())).toThrowError(
+      ValidationError
     );
-    expect(() => decoder.unstable_decode(/null/)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(new Error("null"))).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate(/null/)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(new Error("null"))).toThrowError(
+      ValidationError
     );
   });
 
   it("should have correct schema", () => {
-    const decoder = null_();
-    expect(decoder.schema).toEqual({ type: "null" });
+    const validator = null_();
+    expect(validator.schema).toEqual({ type: "null" });
   });
 
   it("should have empty rules", () => {
-    const decoder = null_();
-    expect(decoder.rules).toEqual({});
+    const validator = null_();
+    expect(validator.rules).toEqual({});
   });
 
-  it("should throw DecoderError with full details for non-null violation", () => {
-    const decoder = null_();
+  it("should throw ValidationError with full details for non-null violation", () => {
+    const validator = null_();
 
     try {
-      decoder.unstable_decode("not null");
+      validator.unstable_validate("not null");
       expect.fail();
     } catch (error) {
-      expect(error).toBeInstanceOf(DecoderError);
-      expect((error as DecoderError).path).toEqual({
+      expect(error).toBeInstanceOf(ValidationError);
+      expect((error as ValidationError).path).toEqual({
         type: "schema",
         data: "not null",
       });
-      expect((error as DecoderError).schema).toEqual({ type: "null" });
-      expect((error as DecoderError).rules).toEqual({});
-      expect((error as DecoderError).message).toBe(
+      expect((error as ValidationError).schema).toEqual({ type: "null" });
+      expect((error as ValidationError).rules).toEqual({});
+      expect((error as ValidationError).message).toBe(
         'Validation failed due to schema mismatch; expected schema: {"type":"null"}; received value: "not null"'
       );
     }
   });
 
   it("should handle edge cases with null-like values", () => {
-    const decoder = null_();
+    const validator = null_();
 
     // Values that might be confused with null
-    expect(() => decoder.unstable_decode(undefined)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(0)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(false)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode("")).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(NaN)).toThrowError(DecoderError);
-    expect(() => decoder.unstable_decode(void 0)).toThrowError(DecoderError);
+    expect(() => validator.unstable_validate(undefined)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(0)).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate(false)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate("")).toThrowError(ValidationError);
+    expect(() => validator.unstable_validate(NaN)).toThrowError(
+      ValidationError
+    );
+    expect(() => validator.unstable_validate(void 0)).toThrowError(
+      ValidationError
+    );
 
     // Object wrappers
-    expect(() => decoder.unstable_decode(Object(null))).toThrowError(
-      DecoderError
+    expect(() => validator.unstable_validate(Object(null))).toThrowError(
+      ValidationError
     );
   });
 
   it("should work correctly with strict equality", () => {
-    const decoder = null_();
+    const validator = null_();
 
     // Only the primitive null value should pass
-    expect(decoder.unstable_decode(null)).toBe(null);
+    expect(validator.unstable_validate(null)).toBe(null);
 
     // Ensure the returned value is actually null
-    const result = decoder.unstable_decode(null);
+    const result = validator.unstable_validate(null);
     expect(result === null).toBe(true);
     expect(result).toBeNull();
   });
