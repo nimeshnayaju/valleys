@@ -342,8 +342,8 @@ export function array<D extends Validator<any, any, any>>(
                 path: result.error.path,
                 data: value,
               },
-              schema: this.schema,
-              rules: this.rules,
+              schema: result.error.schema,
+              rules: result.error.rules,
             },
           };
         }
@@ -430,8 +430,8 @@ export function object<T extends Record<string, Validator<any, any, any>>>(
                 path: result.error.path,
                 data: value,
               },
-              schema: this.schema,
-              rules: this.rules,
+              schema: result.error.schema,
+              rules: result.error.rules,
             },
           };
         }
@@ -800,8 +800,8 @@ export function validate<D extends Validator<any, any, any>>(
   const result = validator.unstable_validate(value);
   if (result.error !== undefined) {
     throw new ValidationError(
-      validator.schema,
-      validator.rules,
+      result.error.schema,
+      result.error.rules,
       result.error.path
     );
   }

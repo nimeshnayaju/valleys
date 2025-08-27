@@ -188,6 +188,22 @@ describe("array", () => {
       });
     });
 
+    it("should include schema information of item in error in case of item violation", () => {
+      const validator = array(string());
+      const result = validator.unstable_validate([1, 2, 3]);
+      expect(result.error).toMatchObject({
+        schema: { type: "string" },
+      });
+    });
+
+    it("should include rule information in error in case of rule violation of an item", () => {
+      const validator = array(string({ minLength: 10 }));
+      const result = validator.unstable_validate(["a", "b", "c"]);
+      expect(result.error).toMatchObject({
+        rules: { minLength: 10 },
+      });
+    });
+
     it.each([{ input: [1, 2, 3], rules: { minLength: 5 } }])(
       "should include rules information in error",
       ({ input, rules }) => {

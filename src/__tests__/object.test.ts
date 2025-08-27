@@ -331,6 +331,22 @@ describe("object", () => {
     });
   });
 
+  it("should include schema information of property in error in case of property violation", () => {
+    const validator = object({ name: string() });
+    const result = validator.unstable_validate({ name: 123 });
+    expect(result.error).toMatchObject({
+      schema: { type: "string" },
+    });
+  });
+
+  it("should include rule information in error in case of rule violation of a property", () => {
+    const validator = object({ name: string({ minLength: 10 }) });
+    const result = validator.unstable_validate({ name: "John" });
+    expect(result.error).toMatchObject({
+      rules: { minLength: 10 },
+    });
+  });
+
   it("should include 'schema' path in error in case of schema violation", () => {
     const input = 123;
     const validator = object();
