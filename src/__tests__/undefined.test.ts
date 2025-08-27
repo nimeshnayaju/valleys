@@ -1,176 +1,102 @@
 import { describe, expect, it } from "vitest";
-import { undefined_, ValidationError } from "../index";
+import { undefined_ } from "../index";
 
 describe("undefined_", () => {
-  it("should accept undefined values", () => {
-    const validator = undefined_();
-    expect(validator.unstable_validate(undefined)).toBe(undefined);
+  it("should accept undefined value", () => {
+    const result = undefined_().unstable_validate(undefined);
+    expect(result.value).toBe(undefined); // undefined is the valid value
+    expect(result.error).toBeUndefined();
   });
 
-  it("should reject non-undefined values", () => {
-    const validator = undefined_();
-
+  it.each([
     // Null
-    expect(() => validator.unstable_validate(null)).toThrowError(
-      ValidationError
-    );
+    null,
 
     // Booleans
-    expect(() => validator.unstable_validate(true)).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(false)).toThrowError(
-      ValidationError
-    );
+    true,
+    false,
 
     // Numbers
-    expect(() => validator.unstable_validate(0)).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate(1)).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate(-1)).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate(123)).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(3.14)).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(Infinity)).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(-Infinity)).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(NaN)).toThrowError(
-      ValidationError
-    );
+    0,
+    1,
+    -1,
+    123,
+    3.14,
+    Infinity,
+    -Infinity,
+    NaN,
 
     // Strings
-    expect(() => validator.unstable_validate("undefined")).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate("UNDEFINED")).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate("Undefined")).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate("")).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate(" ")).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate("0")).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate("false")).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate("null")).toThrowError(
-      ValidationError
-    );
+    "undefined",
+    "UNDEFINED",
+    "Undefined",
+    "",
+    " ",
+    "0",
+    "false",
+    "null",
 
     // Objects and arrays
-    expect(() => validator.unstable_validate({})).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate([])).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate([undefined])).toThrowError(
-      ValidationError
-    );
-    expect(() =>
-      validator.unstable_validate({ value: undefined })
-    ).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate(new Object())).toThrowError(
-      ValidationError
-    );
+    {},
+    [],
+    [undefined],
+    { value: undefined },
+    new Object(),
 
     // Functions
-    expect(() => validator.unstable_validate(() => undefined)).toThrowError(
-      ValidationError
-    );
-    expect(() =>
-      validator.unstable_validate(function () {
-        return undefined;
-      })
-    ).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate(function () {})).toThrowError(
-      ValidationError
-    );
+    () => undefined,
+    function () {
+      return undefined;
+    },
+    function () {},
 
     // Symbols and other types
-    expect(() => validator.unstable_validate(Symbol("undefined"))).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(new Date())).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(/undefined/)).toThrowError(
-      ValidationError
-    );
-    expect(() =>
-      validator.unstable_validate(new Error("undefined"))
-    ).toThrowError(ValidationError);
+    Symbol("undefined"),
+    new Date(),
+    /undefined/,
+    new Error("undefined"),
+
+    // Edge cases with undefined-like values
+    0,
+    false,
+    "",
+    NaN,
+  ])("should reject value '%s'", (value) => {
+    const result = undefined_().unstable_validate(value);
+    expect(result.value).toBeUndefined();
+    expect(result.error).toBeDefined();
   });
 
-  it("should have correct schema", () => {
+  it("should return the original value", () => {
+    const value = undefined;
+    const result = undefined_().unstable_validate(value);
+    expect(result.value).toBe(value);
+  });
+
+  it("should include schema", () => {
     const validator = undefined_();
     expect(validator.schema).toEqual({ type: "undefined" });
   });
 
-  it("should have empty rules", () => {
+  it("should include rules", () => {
     const validator = undefined_();
     expect(validator.rules).toEqual({});
   });
 
-  it("should throw ValidationError with full details for non-undefined violation", () => {
-    const validator = undefined_();
-
-    try {
-      validator.unstable_validate("not undefined");
-      expect.fail();
-    } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError);
-      expect((error as ValidationError).path).toEqual({
-        type: "schema",
-        data: "not undefined",
-      });
-      expect((error as ValidationError).schema).toEqual({ type: "undefined" });
-      expect((error as ValidationError).rules).toEqual({});
-      expect((error as ValidationError).message).toBe(
-        'Validation failed due to schema mismatch; expected schema: {"type":"undefined"}; received value: "not undefined"'
-      );
-    }
+  it("should include schema information in error", () => {
+    expect(undefined_().unstable_validate("not undefined").error).toMatchObject(
+      {
+        schema: { type: "undefined" },
+      }
+    );
   });
 
-  it("should handle edge cases with undefined-like values", () => {
+  it("should include 'schema' path in error in case of schema violation", () => {
+    const input = "not undefined";
     const validator = undefined_();
-
-    // Values that might be confused with undefined
-    expect(() => validator.unstable_validate(null)).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(0)).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate(false)).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate("")).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate(NaN)).toThrowError(
-      ValidationError
-    );
-
-    // Different ways to express undefined
-    expect(validator.unstable_validate(void 0)).toBe(undefined);
-    expect(validator.unstable_validate(void 123)).toBe(undefined);
-
-    // Global undefined
-    expect(validator.unstable_validate(globalThis.undefined)).toBe(undefined);
-  });
-
-  it("should work correctly with strict equality", () => {
-    const validator = undefined_();
-
-    // Only the primitive undefined value should pass
-    expect(validator.unstable_validate(undefined)).toBe(undefined);
-
-    // Ensure the returned value is actually undefined
-    const result = validator.unstable_validate(undefined);
-    expect(result === undefined).toBe(true);
-    expect(result).toBeUndefined();
+    const result = validator.unstable_validate(input);
+    expect(result.error).toMatchObject({
+      path: { type: "schema", data: input },
+    });
   });
 });

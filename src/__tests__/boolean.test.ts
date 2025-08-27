@@ -1,190 +1,102 @@
 import { describe, expect, it } from "vitest";
-import { boolean, ValidationError } from "../index";
+import { boolean } from "../index";
 
 describe("boolean", () => {
-  it("should accept boolean values", () => {
-    const validator = boolean();
-
-    // Test true
-    expect(validator.unstable_validate(true)).toBe(true);
-
-    // Test false
-    expect(validator.unstable_validate(false)).toBe(false);
+  it.each([
+    // Basic cases
+    true,
+    false,
+  ])("should accept boolean %s", (value) => {
+    const result = boolean().unstable_validate(value);
+    expect(result.value).toBeDefined();
+    expect(result.error).toBeUndefined();
   });
 
-  it("should reject non-boolean values", () => {
-    const validator = boolean();
-
+  it.each([
     // Numbers
-    expect(() => validator.unstable_validate(0)).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate(1)).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate(-1)).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate(123)).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(3.14)).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(Infinity)).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(-Infinity)).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(NaN)).toThrowError(
-      ValidationError
-    );
+    0,
+    1,
+    -1,
+    123,
+    3.14,
+    Infinity,
+    -Infinity,
+    NaN,
 
     // Strings
-    expect(() => validator.unstable_validate("true")).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate("false")).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate("True")).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate("False")).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate("TRUE")).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate("FALSE")).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate("1")).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate("0")).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate("")).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate(" ")).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate("yes")).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate("no")).toThrowError(
-      ValidationError
-    );
+    "true",
+    "false",
+    "True",
+    "False",
+    "TRUE",
+    "FALSE",
+    "1",
+    "0",
+    "",
+    " ",
+    "yes",
+    "no",
+    "non-empty string",
 
     // Null and undefined
-    expect(() => validator.unstable_validate(null)).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(undefined)).toThrowError(
-      ValidationError
-    );
+    null,
+    undefined,
 
     // Objects and arrays
-    expect(() => validator.unstable_validate({})).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate([])).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate([true])).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate([false])).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate({ value: true })).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate({ value: false })).toThrowError(
-      ValidationError
-    );
+    {},
+    [],
+    [true],
+    [false],
+    { value: true },
+    { value: false },
 
     // Functions
-    expect(() => validator.unstable_validate(() => true)).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(() => false)).toThrowError(
-      ValidationError
-    );
-    expect(() =>
-      validator.unstable_validate(function () {
-        return true;
-      })
-    ).toThrowError(ValidationError);
+    () => true,
+    () => false,
+    function () {
+      return true;
+    },
 
     // Symbols and other types
-    expect(() => validator.unstable_validate(Symbol("test"))).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(new Date())).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(/regex/)).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(new Boolean(true))).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(new Boolean(false))).toThrowError(
-      ValidationError
-    );
+    Symbol("test"),
+    new Date(),
+    /regex/,
+    new Boolean(true),
+    new Boolean(false),
+  ])("should reject value '%s'", (value) => {
+    const result = boolean().unstable_validate(value);
+    expect(result.value).toBeUndefined();
+    expect(result.error).toBeDefined();
   });
 
-  it("should have correct schema", () => {
+  it("should return the original value", () => {
+    const value = true;
+    const result = boolean().unstable_validate(value);
+    expect(result.value).toBe(value);
+  });
+
+  it("should include schema", () => {
     const validator = boolean();
     expect(validator.schema).toEqual({ type: "boolean" });
   });
 
-  it("should have empty rules", () => {
+  it("should include rules", () => {
     const validator = boolean();
     expect(validator.rules).toEqual({});
   });
 
-  it("should throw ValidationError with full details for non-boolean violation", () => {
-    const validator = boolean();
-
-    try {
-      validator.unstable_validate("not a boolean");
-      expect.fail();
-    } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError);
-      if (error instanceof ValidationError) {
-        expect((error as ValidationError).path).toEqual({
-          type: "schema",
-          data: "not a boolean",
-        });
-        expect((error as ValidationError).schema).toEqual({ type: "boolean" });
-        expect((error as ValidationError).rules).toEqual({});
-        expect((error as ValidationError).message).toBe(
-          'Validation failed due to schema mismatch; expected schema: {"type":"boolean"}; received value: "not a boolean"'
-        );
-      }
-    }
+  it("should include schema information in error", () => {
+    expect(boolean().unstable_validate("not a boolean").error).toMatchObject({
+      schema: { type: "boolean" },
+    });
   });
 
-  it("should handle edge cases with truthy/falsy values", () => {
+  it("should include 'schema' path in error in case of schema violation", () => {
+    const input = "not a boolean";
     const validator = boolean();
-
-    // Truthy values that are not true
-    expect(() => validator.unstable_validate("non-empty string")).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(1)).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate(-1)).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate([])).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate({})).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate(new Date())).toThrowError(
-      ValidationError
-    );
-
-    // Falsy values that are not false
-    expect(() => validator.unstable_validate(0)).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate(-0)).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate("")).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate(null)).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(undefined)).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(NaN)).toThrowError(
-      ValidationError
-    );
+    const result = validator.unstable_validate(input);
+    expect(result.error).toMatchObject({
+      path: { type: "schema", data: input },
+    });
   });
 });

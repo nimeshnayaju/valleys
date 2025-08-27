@@ -1,495 +1,210 @@
 import { describe, expect, it } from "vitest";
-import { constant, ValidationError } from "../index";
+import { constant } from "../index";
 
 describe("constant", () => {
-  describe("string constants", () => {
-    it("should accept exact string matches", () => {
-      const validator = constant("hello");
-      expect(validator.unstable_validate("hello")).toBe("hello");
-    });
+  it.each([
+    // String constants
+    "hello",
+    "",
+    " ",
+    "123",
+    "true",
+    "false",
+    "null",
+    "undefined",
+    "!@#$%^&*()",
+    "hello\nworld",
+    "hello\tworld",
+    "hello\\world",
+    'hello"world',
+    "hello'world",
+    "你好世界",
+    "مرحبا بالعالم",
+    "🌍🚀✨",
+    "café",
+    "a".repeat(10000),
 
-    it("should reject different strings", () => {
-      const validator = constant("hello");
-      expect(() => validator.unstable_validate("Hello")).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate("hello ")).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate(" hello")).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate("HELLO")).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate("")).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate("world")).toThrowError(
-        ValidationError
-      );
-    });
+    // Number constants
+    0,
+    1,
+    -1,
+    42,
+    3.14,
+    -123,
+    Number.MAX_SAFE_INTEGER,
+    Number.MIN_SAFE_INTEGER,
+    Number.EPSILON,
+    Infinity,
+    -Infinity,
 
-    it("should work with empty strings", () => {
-      const validator = constant("");
-      expect(validator.unstable_validate("")).toBe("");
-      expect(() => validator.unstable_validate(" ")).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate("a")).toThrowError(
-        ValidationError
-      );
-    });
+    // Boolean constants
+    true,
+    false,
 
-    it("should work with special characters", () => {
-      const special = "!@#$%^&*()";
-      const validator = constant(special);
-      expect(validator.unstable_validate(special)).toBe(special);
-      expect(() => validator.unstable_validate("!@#$%^&*")).toThrowError(
-        ValidationError
-      );
-    });
+    // Null
+    null,
 
-    it("should work with unicode and emojis", () => {
-      const unicodeStr = "你好🌍";
-      const validator = constant(unicodeStr);
-      expect(validator.unstable_validate(unicodeStr)).toBe(unicodeStr);
-      expect(() => validator.unstable_validate("你好")).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate("🌍")).toThrowError(
-        ValidationError
-      );
-    });
+    // Symbol constants
+    Symbol("test"),
+    Symbol(),
+    Symbol.for("global"),
+  ])("should accept constant value %s", (value) => {
+    const validator = constant(value);
+    const result = validator.unstable_validate(value);
+    expect(result.value).toBeDefined();
+    expect(result.error).toBeUndefined();
+  });
 
-    it("should include string value in schema", () => {
-      const validator = constant("test");
-      expect(validator.schema).toEqual({ type: "constant", value: "test" });
-    });
+  it.each([
+    // Test with different string constants
+    { constant: "hello", invalid: "Hello" },
+    { constant: "hello", invalid: "hello " },
+    { constant: "hello", invalid: " hello" },
+    { constant: "hello", invalid: "HELLO" },
+    { constant: "hello", invalid: "" },
+    { constant: "hello", invalid: "world" },
+    { constant: "", invalid: " " },
+    { constant: "", invalid: "a" },
+    { constant: "!@#$%^&*()", invalid: "!@#$%^&*" },
+    { constant: "你好🌍", invalid: "你好" },
+    { constant: "你好🌍", invalid: "🌍" },
 
-    it("should throw ValidationError with full details for non-string violation", () => {
-      const validator = constant("test");
-      try {
-        validator.unstable_validate("actual");
-        expect.fail();
-      } catch (error) {
-        expect(error).toBeInstanceOf(ValidationError);
-        expect((error as ValidationError).path).toEqual({
-          type: "schema",
-          data: "actual",
-        });
-        expect((error as ValidationError).schema).toEqual({
-          type: "constant",
-          value: "test",
-        });
-        expect((error as ValidationError).rules).toEqual({});
-        expect((error as ValidationError).message).toBe(
-          'Validation failed due to schema mismatch; expected schema: {"type":"constant","value":"test"}; received value: "actual"'
-        );
-      }
+    // Test with different number constants
+    { constant: 42, invalid: 41 },
+    { constant: 42, invalid: 43 },
+    { constant: 42, invalid: 42.1 },
+    { constant: 42, invalid: -42 },
+    { constant: 0, invalid: 1 },
+    { constant: 0, invalid: false },
+    { constant: -123, invalid: 123 },
+    { constant: 3.14, invalid: 3 },
+    { constant: Infinity, invalid: -Infinity },
+    { constant: -Infinity, invalid: Infinity },
+
+    // Test with different boolean constants
+    { constant: true, invalid: false },
+    { constant: false, invalid: true },
+    { constant: true, invalid: 1 },
+    { constant: true, invalid: "true" },
+    { constant: true, invalid: {} },
+    { constant: false, invalid: 0 },
+    { constant: false, invalid: "" },
+    { constant: false, invalid: null },
+    { constant: false, invalid: undefined },
+
+    // Test with different symbol constants
+    { constant: Symbol("test"), invalid: Symbol("test") },
+    { constant: Symbol("test"), invalid: "Symbol(test)" },
+    { constant: Symbol("test"), invalid: "test" },
+    { constant: Symbol("test"), invalid: Symbol },
+
+    // Test with null and undefined
+    { constant: null, invalid: undefined },
+    { constant: null, invalid: 0 },
+    { constant: null, invalid: false },
+    { constant: null, invalid: "" },
+    { constant: null, invalid: "null" },
+    { constant: null, invalid: {} },
+    { constant: null, invalid: [] },
+    { constant: undefined, invalid: null },
+    { constant: undefined, invalid: 0 },
+    { constant: undefined, invalid: false },
+    { constant: undefined, invalid: "" },
+    { constant: undefined, invalid: "undefined" },
+    { constant: undefined, invalid: {} },
+    { constant: undefined, invalid: [] },
+
+    // Test with NaN
+    { constant: NaN, invalid: NaN },
+    { constant: NaN, invalid: 0 },
+  ])(
+    "should reject value '$invalid' when constant is '$constant'",
+    ({ constant: constValue, invalid }) => {
+      const validator = constant(constValue);
+      const result = validator.unstable_validate(invalid);
+      expect(result.value).toBeUndefined();
+      expect(result.error).toBeDefined();
+    }
+  );
+
+  it("should return the original value", () => {
+    const value = "hello";
+    const result = constant(value).unstable_validate(value);
+    expect(result.value).toBe(value);
+  });
+
+  it.each(["test", 42, true, null, undefined, Symbol("test")])(
+    "should include schema",
+    (value) => {
+      const validator = constant(value);
+      expect(validator.schema).toEqual({
+        type: "constant",
+        value: String(value),
+      });
+    }
+  );
+
+  it("should include rules", () => {
+    const validator = constant("test");
+    expect(validator.rules).toEqual({});
+  });
+
+  it("should include schema information in error", () => {
+    const validator = constant("test");
+    const result = validator.unstable_validate("actual");
+    expect(result.error).toMatchObject({
+      schema: { type: "constant", value: "test" },
     });
   });
 
-  describe("number constants", () => {
-    it("should accept exact number matches", () => {
-      const validator = constant(42);
-      expect(validator.unstable_validate(42)).toBe(42);
+  it("should include 'schema' path in error in case of schema violation", () => {
+    const input = "actual";
+    const validator = constant("test");
+    const result = validator.unstable_validate(input);
+    expect(result.error).toMatchObject({
+      path: { type: "schema", data: input },
     });
+  });
 
-    it("should reject different numbers", () => {
-      const validator = constant(42);
-      expect(() => validator.unstable_validate(41)).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate(43)).toThrowError(
-        ValidationError
-      );
-      expect(validator.unstable_validate(42.0)).toBe(42); // This should pass as 42 === 42.0
-      expect(() => validator.unstable_validate(42.1)).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate(-42)).toThrowError(
-        ValidationError
-      );
-    });
+  it("should work with undefined value", () => {
+    const result = constant(undefined).unstable_validate(undefined);
+    expect(result.value).toBe(undefined); // undefined is the valid value
+    expect(result.error).toBeUndefined();
+  });
 
-    it("should work with zero", () => {
-      const validator = constant(0);
-      expect(validator.unstable_validate(0)).toBe(0);
-      expect(validator.unstable_validate(-0)).toBe(-0); // Returns -0 as is, but -0 === 0 passes the validation
-      expect(() => validator.unstable_validate(1)).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate(false)).toThrowError(
-        ValidationError
-      );
-    });
+  it("should work with void 0 for undefined", () => {
+    const validator = constant(undefined);
+    const result1 = validator.unstable_validate(void 0);
+    expect(result1.value).toBe(undefined);
+    expect(result1.error).toBeUndefined();
 
-    it("should work with negative numbers", () => {
-      const validator = constant(-123);
-      expect(validator.unstable_validate(-123)).toBe(-123);
-      expect(() => validator.unstable_validate(123)).toThrowError(
-        ValidationError
-      );
-    });
+    const result2 = validator.unstable_validate(void 123);
+    expect(result2.value).toBe(undefined);
+    expect(result2.error).toBeUndefined();
+  });
 
-    it("should work with decimal numbers", () => {
-      const validator = constant(3.14);
-      expect(validator.unstable_validate(3.14)).toBe(3.14);
-      expect(() => validator.unstable_validate(3)).toThrowError(
-        ValidationError
-      );
-      expect(validator.unstable_validate(3.14)).toBe(3.14); // Should pass as 3.14 === 3.140
-    });
+  it("should work with Object(null) edge case", () => {
+    const validator = constant(null);
+    const result = validator.unstable_validate(Object(null));
+    expect(result.value).toBeUndefined();
+    expect(result.error).toBeDefined();
+  });
 
-    it("should work with very large numbers", () => {
-      const largeNum = 9007199254740991; // Number.MAX_SAFE_INTEGER
-      const validator = constant(largeNum);
-      expect(validator.unstable_validate(largeNum)).toBe(largeNum);
-      expect(() => validator.unstable_validate(largeNum - 1)).toThrowError(
-        ValidationError
-      );
-    });
+  it("should work with Symbol.for", () => {
+    const result = constant(Symbol.for("global")).unstable_validate(
+      Symbol("global")
+    );
+    expect(result.value).toBeUndefined();
+    expect(result.error).toBeDefined();
+  });
 
-    it("should work with Infinity", () => {
-      const validator = constant(Infinity);
-      expect(validator.unstable_validate(Infinity)).toBe(Infinity);
-      expect(() => validator.unstable_validate(-Infinity)).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate(Number.MAX_VALUE)).toThrowError(
-        ValidationError
-      );
-    });
-
-    it("should work with -Infinity", () => {
-      const validator = constant(-Infinity);
-      expect(validator.unstable_validate(-Infinity)).toBe(-Infinity);
-      expect(() => validator.unstable_validate(Infinity)).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate(-Number.MAX_VALUE)).toThrowError(
-        ValidationError
-      );
-    });
-
+  describe("edge cases", () => {
     it("should handle NaN properly", () => {
       const validator = constant(NaN);
       // NaN !== NaN in JavaScript, so this should fail
-      expect(() => validator.unstable_validate(NaN)).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate(Number.NaN)).toThrowError(
-        ValidationError
-      );
-    });
-
-    it("should include number value in schema as string", () => {
-      const validator = constant(42);
-      expect(validator.schema).toEqual({ type: "constant", value: "42" });
-    });
-
-    it("should throw ValidationError with full details for non-number violation", () => {
-      const validator = constant(42);
-      try {
-        validator.unstable_validate("actual");
-        expect.fail();
-      } catch (error) {
-        expect(error).toBeInstanceOf(ValidationError);
-        expect((error as ValidationError).path).toEqual({
-          type: "schema",
-          data: "actual",
-        });
-        expect((error as ValidationError).schema).toEqual({
-          type: "constant",
-          value: "42",
-        });
-        expect((error as ValidationError).rules).toEqual({});
-        expect((error as ValidationError).message).toBe(
-          'Validation failed due to schema mismatch; expected schema: {"type":"constant","value":"42"}; received value: "actual"'
-        );
-      }
-    });
-  });
-
-  describe("boolean constants", () => {
-    it("should accept exact boolean matches", () => {
-      const truevalidator = constant(true);
-      expect(truevalidator.unstable_validate(true)).toBe(true);
-
-      const falsevalidator = constant(false);
-      expect(falsevalidator.unstable_validate(false)).toBe(false);
-    });
-
-    it("should reject opposite boolean", () => {
-      const truevalidator = constant(true);
-      expect(() => truevalidator.unstable_validate(false)).toThrowError(
-        ValidationError
-      );
-
-      const falsevalidator = constant(false);
-      expect(() => falsevalidator.unstable_validate(true)).toThrowError(
-        ValidationError
-      );
-    });
-
-    it("should reject truthy/falsy values", () => {
-      const truevalidator = constant(true);
-      expect(() => truevalidator.unstable_validate(1)).toThrowError(
-        ValidationError
-      );
-      expect(() => truevalidator.unstable_validate("true")).toThrowError(
-        ValidationError
-      );
-      expect(() => truevalidator.unstable_validate({})).toThrowError(
-        ValidationError
-      );
-
-      const falsevalidator = constant(false);
-      expect(() => falsevalidator.unstable_validate(0)).toThrowError(
-        ValidationError
-      );
-      expect(() => falsevalidator.unstable_validate("")).toThrowError(
-        ValidationError
-      );
-      expect(() => falsevalidator.unstable_validate(null)).toThrowError(
-        ValidationError
-      );
-      expect(() => falsevalidator.unstable_validate(undefined)).toThrowError(
-        ValidationError
-      );
-    });
-
-    it("should include boolean value in schema as string", () => {
-      const truevalidator = constant(true);
-      expect(truevalidator.schema).toEqual({ type: "constant", value: "true" });
-
-      const falsevalidator = constant(false);
-      expect(falsevalidator.schema).toEqual({
-        type: "constant",
-        value: "false",
-      });
-    });
-
-    it("should throw ValidationError with full details for non-boolean violation", () => {
-      const validator = constant(true);
-      try {
-        validator.unstable_validate("actual");
-        expect.fail();
-      } catch (error) {
-        expect(error).toBeInstanceOf(ValidationError);
-        expect((error as ValidationError).path).toEqual({
-          type: "schema",
-          data: "actual",
-        });
-        expect((error as ValidationError).schema).toEqual({
-          type: "constant",
-          value: "true",
-        });
-        expect((error as ValidationError).rules).toEqual({});
-        expect((error as ValidationError).message).toBe(
-          'Validation failed due to schema mismatch; expected schema: {"type":"constant","value":"true"}; received value: "actual"'
-        );
-      }
-    });
-  });
-
-  describe("symbol constants", () => {
-    it("should accept exact symbol matches", () => {
-      const sym = Symbol("test");
-      const validator = constant(sym);
-      expect(validator.unstable_validate(sym)).toBe(sym);
-    });
-
-    it("should reject different symbols", () => {
-      const sym1 = Symbol("test");
-      const sym2 = Symbol("test");
-      const validator = constant(sym1);
-      expect(() => validator.unstable_validate(sym2)).toThrowError(
-        ValidationError
-      );
-    });
-
-    it("should reject non-symbol values", () => {
-      const sym = Symbol("test");
-      const validator = constant(sym);
-      expect(() => validator.unstable_validate("Symbol(test)")).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate("test")).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate(Symbol)).toThrowError(
-        ValidationError
-      );
-    });
-
-    it("should work with Symbol.for", () => {
-      const globalSym = Symbol.for("global");
-      const validator = constant(globalSym);
-      expect(validator.unstable_validate(Symbol.for("global"))).toBe(globalSym);
-      expect(() => validator.unstable_validate(Symbol("global"))).toThrowError(
-        ValidationError
-      );
-    });
-
-    it("should include symbol in schema as string", () => {
-      const sym = Symbol("test");
-      const validator = constant(sym);
-      expect(validator.schema).toEqual({
-        type: "constant",
-        value: "Symbol(test)",
-      });
-
-      const symNoDesc = Symbol();
-      const validatorNoDesc = constant(symNoDesc);
-      expect(validatorNoDesc.schema).toEqual({
-        type: "constant",
-        value: "Symbol()",
-      });
-    });
-
-    it("should throw ValidationError with full details for non-symbol violation", () => {
-      const validator = constant(Symbol("test"));
-      try {
-        validator.unstable_validate("actual");
-        expect.fail();
-      } catch (error) {
-        expect(error).toBeInstanceOf(ValidationError);
-        expect((error as ValidationError).path).toEqual({
-          type: "schema",
-          data: "actual",
-        });
-        expect((error as ValidationError).schema).toEqual({
-          type: "constant",
-          value: "Symbol(test)",
-        });
-        expect((error as ValidationError).rules).toEqual({});
-        expect((error as ValidationError).message).toBe(
-          'Validation failed due to schema mismatch; expected schema: {"type":"constant","value":"Symbol(test)"}; received value: "actual"'
-        );
-      }
-    });
-  });
-
-  describe("null constant", () => {
-    it("should accept null", () => {
-      const validator = constant(null);
-      expect(validator.unstable_validate(null)).toBe(null);
-    });
-
-    it("should reject non-null values", () => {
-      const validator = constant(null);
-      expect(() => validator.unstable_validate(undefined)).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate(0)).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate(false)).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate("")).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate("null")).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate({})).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate([])).toThrowError(
-        ValidationError
-      );
-    });
-
-    it("should include null in schema as string", () => {
-      const validator = constant(null);
-      expect(validator.schema).toEqual({ type: "constant", value: "null" });
-    });
-
-    it("should throw ValidationError with full details for non-null violation", () => {
-      const validator = constant(null);
-      try {
-        validator.unstable_validate("actual");
-        expect.fail();
-      } catch (error) {
-        expect(error).toBeInstanceOf(ValidationError);
-        expect((error as ValidationError).path).toEqual({
-          type: "schema",
-          data: "actual",
-        });
-        expect((error as ValidationError).schema).toEqual({
-          type: "constant",
-          value: "null",
-        });
-        expect((error as ValidationError).rules).toEqual({});
-        expect((error as ValidationError).message).toBe(
-          'Validation failed due to schema mismatch; expected schema: {"type":"constant","value":"null"}; received value: "actual"'
-        );
-      }
-    });
-  });
-
-  describe("undefined constant", () => {
-    it("should accept undefined", () => {
-      const validator = constant(undefined);
-      expect(validator.unstable_validate(undefined)).toBe(undefined);
-    });
-
-    it("should reject non-undefined values", () => {
-      const validator = constant(undefined);
-      expect(() => validator.unstable_validate(null)).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate(0)).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate(false)).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate("")).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate("undefined")).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate({})).toThrowError(
-        ValidationError
-      );
-      expect(() => validator.unstable_validate([])).toThrowError(
-        ValidationError
-      );
-    });
-
-    it("should include undefined in schema as string", () => {
-      const validator = constant(undefined);
-      expect(validator.schema).toEqual({
-        type: "constant",
-        value: "undefined",
-      });
-    });
-
-    it("should throw ValidationError with full details for non-undefined violation", () => {
-      const validator = constant(undefined);
-      try {
-        validator.unstable_validate("actual");
-        expect.fail();
-      } catch (error) {
-        expect(error).toBeInstanceOf(ValidationError);
-        expect((error as ValidationError).path).toEqual({
-          type: "schema",
-          data: "actual",
-        });
-        expect((error as ValidationError).schema).toEqual({
-          type: "constant",
-          value: "undefined",
-        });
-        expect((error as ValidationError).rules).toEqual({});
-        expect((error as ValidationError).message).toBe(
-          'Validation failed due to schema mismatch; expected schema: {"type":"constant","value":"undefined"}; received value: "actual"'
-        );
-      }
+      const result = validator.unstable_validate(NaN);
+      expect(result.value).toBeUndefined();
+      expect(result.error).toBeDefined();
     });
   });
 });

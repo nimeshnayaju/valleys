@@ -13,7 +13,20 @@ type Validator<
    * @param value - The value to validate.
    * @returns The original value with narrowed type if validation was successful. Throws `ValidationError` if validation fails.
    */
-  unstable_validate(value: unknown): Output;
+  unstable_validate(value: unknown):
+    | { value: Output; error?: never }
+    | {
+        value?: never;
+        error: {
+          path:
+            | SchemaPathSegment
+            | RulePathSegment<RuleSet, RuleDataType<Schema>>
+            | KeyedPropertyErrorPath
+            | IndexedItemErrorPath;
+          schema: Schema;
+          rules: RuleSet;
+        };
+      };
   schema: Schema;
   rules: RuleSet;
 };
@@ -82,33 +95,40 @@ export function string(rules?: {
   { minLength?: number; maxLength?: number }
 > {
   return {
-    unstable_validate(value: unknown): string {
+    unstable_validate(value: unknown) {
       if (typeof value !== "string") {
-        throw new ValidationError(this.schema, this.rules, {
-          type: "schema",
-          data: value,
-        });
+        return {
+          error: {
+            path: { type: "schema", data: value },
+            schema: this.schema,
+            rules: this.rules,
+          },
+        };
       }
 
       const minLength = rules?.minLength;
       if (minLength !== undefined && value.length < minLength) {
-        throw new ValidationError(this.schema, this.rules, {
-          type: "rule",
-          rule: "minLength",
-          data: value,
-        });
+        return {
+          error: {
+            path: { type: "rule", rule: "minLength", data: value },
+            schema: this.schema,
+            rules: this.rules,
+          },
+        };
       }
 
       const maxLength = rules?.maxLength;
       if (maxLength !== undefined && value.length > maxLength) {
-        throw new ValidationError(this.schema, this.rules, {
-          type: "rule",
-          rule: "maxLength",
-          data: value,
-        });
+        return {
+          error: {
+            path: { type: "rule", rule: "maxLength", data: value },
+            schema: this.schema,
+            rules: this.rules,
+          },
+        };
       }
 
-      return value as string;
+      return { value: value };
     },
     schema: { type: "string" },
     rules: {
@@ -139,33 +159,40 @@ export function number(rules?: {
   max?: number;
 }): Validator<number, { type: "number" }, { min?: number; max?: number }> {
   return {
-    unstable_validate(value: unknown): number {
+    unstable_validate(value: unknown) {
       if (typeof value !== "number" || !Number.isFinite(value)) {
-        throw new ValidationError(this.schema, this.rules, {
-          type: "schema",
-          data: value,
-        });
+        return {
+          error: {
+            path: { type: "schema", data: value },
+            schema: this.schema,
+            rules: this.rules,
+          },
+        };
       }
 
       const min = rules?.min;
       if (min !== undefined && value < min) {
-        throw new ValidationError(this.schema, this.rules, {
-          type: "rule",
-          rule: "min",
-          data: value,
-        });
+        return {
+          error: {
+            path: { type: "rule", rule: "min", data: value },
+            schema: this.schema,
+            rules: this.rules,
+          },
+        };
       }
 
       const max = rules?.max;
       if (max !== undefined && value > max) {
-        throw new ValidationError(this.schema, this.rules, {
-          type: "rule",
-          rule: "max",
-          data: value,
-        });
+        return {
+          error: {
+            path: { type: "rule", rule: "max", data: value },
+            schema: this.schema,
+            rules: this.rules,
+          },
+        };
       }
 
-      return value;
+      return { value: value };
     },
     schema: { type: "number" },
     rules: { min: rules?.min, max: rules?.max },
@@ -183,14 +210,17 @@ export function number(rules?: {
  */
 export function boolean(): Validator<boolean, { type: "boolean" }> {
   return {
-    unstable_validate(value: unknown): boolean {
+    unstable_validate(value: unknown) {
       if (typeof value !== "boolean") {
-        throw new ValidationError(this.schema, this.rules, {
-          type: "schema",
-          data: value,
-        });
+        return {
+          error: {
+            path: { type: "schema", data: value },
+            schema: this.schema,
+            rules: this.rules,
+          },
+        };
       }
-      return value;
+      return { value: value };
     },
     schema: { type: "boolean" },
     rules: {},
@@ -211,14 +241,17 @@ export function constant<
   T extends string | number | boolean | symbol | undefined | null
 >(value: T): Validator<T, { type: "constant"; value: string }> {
   return {
-    unstable_validate(input: unknown): T {
+    unstable_validate(input: unknown) {
       if (input !== value) {
-        throw new ValidationError(this.schema, this.rules, {
-          type: "schema",
-          data: input,
-        });
+        return {
+          error: {
+            path: { type: "schema", data: input },
+            schema: this.schema,
+            rules: this.rules,
+          },
+        };
       }
-      return input as T;
+      return { value: input as T };
     },
     schema: { type: "constant", value: String(value) },
     rules: {},
@@ -272,43 +305,50 @@ export function array<D extends Validator<any, any, any>>(
   }
 
   return {
-    unstable_validate(value: unknown): Array<InferOutputOf<D>> {
+    unstable_validate(value: unknown) {
       if (!Array.isArray(value)) {
-        throw new ValidationError(this.schema, this.rules, {
-          type: "schema",
-          data: value,
-        });
+        return {
+          error: {
+            path: { type: "schema", data: value },
+            schema: this.schema,
+            rules: this.rules,
+          },
+        };
       }
 
       const minLength = rules?.minLength;
       if (minLength !== undefined && value.length < minLength) {
-        throw new ValidationError(this.schema, this.rules, {
-          type: "rule",
-          rule: "minLength",
-          data: value,
-        });
+        return {
+          error: {
+            path: { type: "rule", rule: "minLength", data: value },
+            schema: this.schema,
+            rules: this.rules,
+          },
+        };
       }
 
       if (validator === undefined) {
-        return value;
+        return { value: value as Array<InferOutputOf<D>> };
       }
 
       for (let i = 0; i < value.length; i++) {
-        try {
-          validator.unstable_validate(value[i]);
-        } catch (err) {
-          if (err instanceof ValidationError) {
-            throw new ValidationError(err.schema, err.rules, {
-              type: "item",
-              index: i,
-              data: value,
-              path: err.path,
-            });
-          }
-          throw err;
+        const result = validator.unstable_validate(value[i]);
+        if (result.error !== undefined) {
+          return {
+            error: {
+              path: {
+                type: "item",
+                index: i,
+                path: result.error.path,
+                data: value,
+              },
+              schema: this.schema,
+              rules: this.rules,
+            },
+          };
         }
       }
-      return value;
+      return { value: value as Array<InferOutputOf<D>> };
     },
     schema: { type: "array", item: validator?.schema },
     rules: { minLength: rules?.minLength },
@@ -361,42 +401,47 @@ export function object<T extends Record<string, Validator<any, any, any>>>(
   { type: "object"; properties: Record<string, { type: string }> }
 > {
   return {
-    unstable_validate(value: unknown): ObjectValidatorType<T> {
+    unstable_validate(value: unknown) {
       if (
         value === null ||
         value === undefined ||
         typeof value !== "object" ||
         Object.prototype.toString.call(value) !== "[object Object]"
       ) {
-        throw new ValidationError(this.schema, this.rules, {
-          type: "schema",
-          data: value,
-        });
+        return {
+          error: {
+            path: { type: "schema", data: value },
+            schema: this.schema,
+            rules: this.rules,
+          },
+        };
       }
 
       if (validators === undefined || Object.keys(validators).length === 0) {
-        return value as ObjectValidatorType<T>;
+        return { value: value as ObjectValidatorType<T> };
       }
 
       for (const key in validators) {
-        try {
-          const validator = validators[key];
-          if (!validator) continue;
+        const validator = validators[key];
+        if (!validator) continue;
 
-          validator.unstable_validate((value as any)[key]);
-        } catch (err) {
-          if (err instanceof ValidationError) {
-            throw new ValidationError(err.schema, err.rules, {
-              type: "property",
-              property: key,
-              path: err.path,
-              data: value,
-            });
-          }
-          throw err;
+        const result = validator.unstable_validate((value as any)[key]);
+        if (result.error !== undefined) {
+          return {
+            error: {
+              path: {
+                type: "property",
+                property: key,
+                path: result.error.path,
+                data: value,
+              },
+              schema: this.schema,
+              rules: this.rules,
+            },
+          };
         }
       }
-      return value as ObjectValidatorType<T>;
+      return { value: value as ObjectValidatorType<T> };
     },
     schema: {
       type: "object",
@@ -429,21 +474,27 @@ const iso8601Regex =
  */
 export function iso8601(): Validator<Iso8601, { type: "iso8601" }> {
   return {
-    unstable_validate(value: unknown): Iso8601 {
+    unstable_validate(value: unknown) {
       if (typeof value !== "string" || !iso8601Regex.test(value)) {
-        throw new ValidationError(this.schema, this.rules, {
-          type: "schema",
-          data: value,
-        });
+        return {
+          error: {
+            path: { type: "schema", data: value },
+            schema: this.schema,
+            rules: this.rules,
+          },
+        };
       }
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) {
-        throw new ValidationError(this.schema, this.rules, {
-          type: "schema",
-          data: value,
-        });
+        return {
+          error: {
+            path: { type: "schema", data: value },
+            schema: this.schema,
+            rules: this.rules,
+          },
+        };
       }
-      return value as Iso8601;
+      return { value: value as Iso8601 };
     },
     schema: { type: "iso8601" },
     rules: {},
@@ -467,19 +518,20 @@ export function or<D extends readonly Validator<any, any, any>[]>(
   { type: "or"; item: D[number]["schema"][] }
 > {
   return {
-    unstable_validate(value: unknown): InferOutputOf<D[number]> {
+    unstable_validate(value: unknown) {
       for (const validator of validators) {
-        try {
-          return validator.unstable_validate(value);
-        } catch (err) {
-          // If the error is not a ValidationError, rethrow it
-          if (!(err instanceof ValidationError)) throw err;
+        const result = validator.unstable_validate(value);
+        if (result.error === undefined) {
+          return { value: result.value as InferOutputOf<D[number]> };
         }
       }
-      throw new ValidationError(this.schema, this.rules, {
-        type: "schema",
-        data: value,
-      });
+      return {
+        error: {
+          path: { type: "schema", data: value },
+          schema: this.schema,
+          rules: this.rules,
+        },
+      };
     },
     schema: {
       type: "or",
@@ -500,14 +552,17 @@ export function or<D extends readonly Validator<any, any, any>[]>(
  */
 export function null_(): Validator<null, { type: "null" }, {}> {
   return {
-    unstable_validate(value: unknown): null {
+    unstable_validate(value: unknown) {
       if (value !== null) {
-        throw new ValidationError(this.schema, this.rules, {
-          type: "schema",
-          data: value,
-        });
+        return {
+          error: {
+            path: { type: "schema", data: value },
+            schema: this.schema,
+            rules: this.rules,
+          },
+        };
       }
-      return null;
+      return { value: value as null };
     },
     schema: { type: "null" },
     rules: {},
@@ -525,14 +580,17 @@ export function null_(): Validator<null, { type: "null" }, {}> {
  */
 export function undefined_(): Validator<undefined, { type: "undefined" }, {}> {
   return {
-    unstable_validate(value: unknown): undefined {
+    unstable_validate(value: unknown) {
       if (value !== undefined) {
-        throw new ValidationError(this.schema, this.rules, {
-          type: "schema",
-          data: value,
-        });
+        return {
+          error: {
+            path: { type: "schema", data: value },
+            schema: this.schema,
+            rules: this.rules,
+          },
+        };
       }
-      return undefined;
+      return { value: value as undefined };
     },
     schema: { type: "undefined" },
     rules: {},
@@ -744,12 +802,13 @@ export function validate<D extends Validator<any, any, any>>(
   value: unknown,
   validator: D
 ): asserts value is InferOutputOf<D> {
-  try {
-    validator.unstable_validate(value);
-  } catch (err) {
-    if (err instanceof ValidationError) {
-      Error.captureStackTrace(err, validate);
-    }
-    throw err;
+  const result = validator.unstable_validate(value);
+  if (result.error !== undefined) {
+    throw new ValidationError(
+      validator.schema,
+      validator.rules,
+      result.error.path
+    );
   }
+  return result.value as InferOutputOf<D>;
 }

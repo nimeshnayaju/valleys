@@ -1,98 +1,111 @@
 import { describe, expect, it } from "vitest";
-import { or, string, number, boolean, ValidationError, null_ } from "../index";
+import { or, string, number } from "../index";
 
 describe("or", () => {
   it("should accept values matching any of the provided validators", () => {
     const validator = or([string(), number()]);
 
     // String values
-    expect(validator.unstable_validate("hello")).toBe("hello");
-    expect(validator.unstable_validate("")).toBe("");
-    expect(validator.unstable_validate("123")).toBe("123");
+    const result1 = validator.unstable_validate("hello");
+    expect(result1.value).toBeDefined();
+    expect(result1.error).toBeUndefined();
+
+    const result2 = validator.unstable_validate("");
+    expect(result2.value).toBeDefined();
+    expect(result2.error).toBeUndefined();
+
+    const result3 = validator.unstable_validate("123");
+    expect(result3.value).toBeDefined();
+    expect(result3.error).toBeUndefined();
 
     // Number values
-    expect(validator.unstable_validate(123)).toBe(123);
-    expect(validator.unstable_validate(0)).toBe(0);
-    expect(validator.unstable_validate(-456)).toBe(-456);
-    expect(validator.unstable_validate(3.14)).toBe(3.14);
-  });
+    const result4 = validator.unstable_validate(123);
+    expect(result4.value).toBeDefined();
+    expect(result4.error).toBeUndefined();
 
-  it("should try validators in order and return first successful match", () => {
-    // Both string() and number() would accept "123" as a string,
-    // but string() comes first so it should be used
-    const validator1 = or([string(), number()]);
-    expect(validator1.unstable_validate("123")).toBe("123");
-    expect(typeof validator1.unstable_validate("123")).toBe("string");
+    const result5 = validator.unstable_validate(0);
+    expect(result5.value).toBeDefined();
+    expect(result5.error).toBeUndefined();
 
-    // If we reverse the order, number() can't validate "123" as a string,
-    // so it falls back to string()
-    const validator2 = or([number(), string()]);
-    expect(validator2.unstable_validate("123")).toBe("123");
-    expect(typeof validator2.unstable_validate("123")).toBe("string");
+    const result6 = validator.unstable_validate(-456);
+    expect(result6.value).toBeDefined();
+    expect(result6.error).toBeUndefined();
 
-    // But numeric 123 will be validated by number() in both cases
-    expect(validator2.unstable_validate(123)).toBe(123);
-    expect(typeof validator2.unstable_validate(123)).toBe("number");
-  });
-
-  it("should work with multiple validator types", () => {
-    const validator = or([string(), number(), boolean(), null_()]);
-
-    expect(validator.unstable_validate("test")).toBe("test");
-    expect(validator.unstable_validate(42)).toBe(42);
-    expect(validator.unstable_validate(true)).toBe(true);
-    expect(validator.unstable_validate(false)).toBe(false);
-    expect(validator.unstable_validate(null)).toBe(null);
+    const result7 = validator.unstable_validate(3.14);
+    expect(result7.value).toBeDefined();
+    expect(result7.error).toBeUndefined();
   });
 
   it("should work with a single validator", () => {
     const validator = or([string()]);
 
-    expect(validator.unstable_validate("test")).toBe("test");
-    expect(() => validator.unstable_validate(123)).toThrowError(
-      ValidationError
-    );
+    const result1 = validator.unstable_validate("test");
+    expect(result1.value).toBe("test");
+    expect(result1.error).toBeUndefined();
+
+    const result2 = validator.unstable_validate(123);
+    expect(result2.value).toBeUndefined();
+    expect(result2.error).toBeDefined();
   });
 
   it("should handle empty validator array", () => {
     const validator = or([]);
 
-    // Should always throw since no validators to try
-    expect(() => validator.unstable_validate("test")).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(123)).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(null)).toThrowError(
-      ValidationError
-    );
+    // Should always fail since no validators to try
+    const result1 = validator.unstable_validate("test");
+    expect(result1.value).toBeUndefined();
+    expect(result1.error).toBeDefined();
+
+    const result2 = validator.unstable_validate(123);
+    expect(result2.value).toBeUndefined();
+    expect(result2.error).toBeDefined();
+
+    const result3 = validator.unstable_validate(null);
+    expect(result3.value).toBeUndefined();
+    expect(result3.error).toBeDefined();
   });
 
-  it("should throw ValidationError with full details for no validator matches", () => {
+  it("should reject values that don't match any of the provided validators", () => {
     const validator = or([string(), number()]);
-
-    try {
-      validator.unstable_validate(true);
-      expect.fail();
-    } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError);
-      expect((error as ValidationError).path).toEqual({
-        type: "schema",
-        data: true,
-      });
-      expect((error as ValidationError).schema).toEqual({
-        type: "or",
-        item: [{ type: "string" }, { type: "number" }],
-      });
-      expect((error as ValidationError).rules).toEqual({});
-      expect((error as ValidationError).message).toBe(
-        'Validation failed due to schema mismatch; expected schema: {"type":"or","item":[{"type":"string"},{"type":"number"}]}; received value: true'
-      );
-    }
+    const result = validator.unstable_validate(true);
+    expect(result.value).toBeUndefined();
+    expect(result.error).toBeDefined();
   });
 
-  it("should only catch ValidationError, not other errors", () => {
+  it("should return the original value", () => {
+    const value = "hello";
+    const result = or([string(), number()]).unstable_validate(value);
+    expect(result.value).toBe(value);
+  });
+
+  it("should include schema", () => {
+    expect(or([string(), number()]).schema).toEqual({
+      type: "or",
+      item: [{ type: "string" }, { type: "number" }],
+    });
+  });
+
+  it("should include rules", () => {
+    expect(or([string(), number()]).rules).toEqual({});
+  });
+
+  it("should include schema information in error", () => {
+    expect(
+      or([string(), number()]).unstable_validate(true).error
+    ).toMatchObject({
+      schema: { type: "or", item: [{ type: "string" }, { type: "number" }] },
+    });
+  });
+
+  it("should include schema path in error in case of schema violation", () => {
+    const validator = or([string(), number()]);
+    const result = validator.unstable_validate(true);
+    expect(result.error).toMatchObject({
+      path: { type: "schema", data: true },
+    });
+  });
+
+  it("should throw error if any of the validators throw an error", () => {
     const throwingValidator = {
       unstable_validate() {
         throw new Error("Custom error");

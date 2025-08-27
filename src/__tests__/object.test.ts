@@ -5,7 +5,6 @@ import {
   number,
   boolean,
   array,
-  ValidationError,
   or,
   undefined_,
 } from "../index";
@@ -15,19 +14,22 @@ describe("object", () => {
     const validator = object();
 
     // Empty object
-    expect(validator.unstable_validate({})).toEqual({});
+    const result1 = validator.unstable_validate({});
+    expect(result1.value).toEqual({});
+    expect(result1.error).toBeUndefined();
 
     // Objects with various properties
-    expect(validator.unstable_validate({ name: "John" })).toEqual({
-      name: "John",
-    });
-    expect(validator.unstable_validate({ age: 30, active: true })).toEqual({
-      age: 30,
-      active: true,
-    });
-    expect(validator.unstable_validate({ nested: { value: 123 } })).toEqual({
-      nested: { value: 123 },
-    });
+    const result2 = validator.unstable_validate({ name: "John" });
+    expect(result2.value).toEqual({ name: "John" });
+    expect(result2.error).toBeUndefined();
+
+    const result3 = validator.unstable_validate({ age: 30, active: true });
+    expect(result3.value).toEqual({ age: 30, active: true });
+    expect(result3.error).toBeUndefined();
+
+    const result4 = validator.unstable_validate({ nested: { value: 123 } });
+    expect(result4.value).toEqual({ nested: { value: 123 } });
+    expect(result4.error).toBeUndefined();
 
     // Complex objects
     const complexObj = {
@@ -37,7 +39,9 @@ describe("object", () => {
       metadata: { created: new Date(), updated: null },
       fn: () => {},
     };
-    expect(validator.unstable_validate(complexObj)).toEqual(complexObj);
+    const result5 = validator.unstable_validate(complexObj);
+    expect(result5.value).toEqual(complexObj);
+    expect(result5.error).toBeUndefined();
   });
 
   it("should validate objects with property validators", () => {
@@ -48,7 +52,9 @@ describe("object", () => {
     });
 
     const validObj = { name: "John", age: 30, isActive: true };
-    expect(validator.unstable_validate(validObj)).toEqual(validObj);
+    const result1 = validator.unstable_validate(validObj);
+    expect(result1.value).toEqual(validObj);
+    expect(result1.error).toBeUndefined();
 
     // Extra properties should be allowed
     const objWithExtra = {
@@ -57,7 +63,9 @@ describe("object", () => {
       isActive: false,
       extra: "data",
     };
-    expect(validator.unstable_validate(objWithExtra)).toEqual(objWithExtra);
+    const result2 = validator.unstable_validate(objWithExtra);
+    expect(result2.value).toEqual(objWithExtra);
+    expect(result2.error).toBeUndefined();
   });
 
   it("should work with nested object validators", () => {
@@ -76,7 +84,9 @@ describe("object", () => {
       user: { name: "Alice", age: 28 },
       settings: { theme: "dark", notifications: true },
     };
-    expect(validator.unstable_validate(validData)).toEqual(validData);
+    const result = validator.unstable_validate(validData);
+    expect(result.value).toEqual(validData);
+    expect(result.error).toBeUndefined();
   });
 
   it("should work with array validators in objects", () => {
@@ -89,7 +99,9 @@ describe("object", () => {
       tags: ["javascript", "typescript", "node"],
       scores: [85, 92, 78],
     };
-    expect(validator.unstable_validate(validData)).toEqual(validData);
+    const result = validator.unstable_validate(validData);
+    expect(result.value).toEqual(validData);
+    expect(result.error).toBeUndefined();
   });
 
   it("should handle objects with undefined properties", () => {
@@ -100,9 +112,9 @@ describe("object", () => {
 
     // undefined properties should be validated if present in the object
     const objWithUndefined = { name: "Test", optional: undefined };
-    expect(() => validator.unstable_validate(objWithUndefined)).toThrowError(
-      ValidationError
-    );
+    const result = validator.unstable_validate(objWithUndefined);
+    expect(result.value).toBeUndefined();
+    expect(result.error).toBeDefined();
   });
 
   it("should handle properties that don't have validators", () => {
@@ -112,121 +124,84 @@ describe("object", () => {
 
     // Properties without validators should pass through
     const obj = { name: "Test", other: "value", another: 123 };
-    expect(validator.unstable_validate(obj)).toEqual(obj);
-  });
-
-  it("should preserve object reference for valid objects", () => {
-    const validator = object();
-    const obj = { test: "value" };
     const result = validator.unstable_validate(obj);
-
-    expect(result).toBe(obj);
-  });
-
-  it("should include schema for empty object validator", () => {
-    const validator = object();
-    expect(validator.schema).toEqual({
-      type: "object",
-      properties: {},
-    });
-  });
-
-  it("should include schema with property schemas", () => {
-    const validator = object({
-      name: string(),
-      age: number(),
-      isActive: boolean(),
-    });
-
-    expect(validator.schema).toEqual({
-      type: "object",
-      properties: {
-        name: { type: "string" },
-        age: { type: "number" },
-        isActive: { type: "boolean" },
-      },
-    });
-  });
-
-  it("should include nested schemas", () => {
-    const validator = object({
-      user: object({
-        name: string(),
-        tags: array(string()),
-      }),
-    });
-
-    expect(validator.schema).toEqual({
-      type: "object",
-      properties: {
-        user: {
-          type: "object",
-          properties: {
-            name: { type: "string" },
-            tags: { type: "array", item: { type: "string" } },
-          },
-        },
-      },
-    });
+    expect(result.value).toEqual(obj);
+    expect(result.error).toBeUndefined();
   });
 
   it("should reject non-objects", () => {
     const validator = object();
 
     // Primitives
-    expect(() => validator.unstable_validate(null)).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(undefined)).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate("string")).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(123)).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(true)).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(false)).toThrowError(
-      ValidationError
-    );
+    const result1 = validator.unstable_validate(null);
+    expect(result1.value).toBeUndefined();
+    expect(result1.error).toBeDefined();
+
+    const result2 = validator.unstable_validate(undefined);
+    expect(result2.value).toBeUndefined();
+    expect(result2.error).toBeDefined();
+
+    const result3 = validator.unstable_validate("string");
+    expect(result3.value).toBeUndefined();
+    expect(result3.error).toBeDefined();
+
+    const result4 = validator.unstable_validate(123);
+    expect(result4.value).toBeUndefined();
+    expect(result4.error).toBeDefined();
+
+    const result5 = validator.unstable_validate(true);
+    expect(result5.value).toBeUndefined();
+    expect(result5.error).toBeDefined();
+
+    const result6 = validator.unstable_validate(false);
+    expect(result6.value).toBeUndefined();
+    expect(result6.error).toBeDefined();
 
     // Arrays (arrays are objects but should be rejected)
-    expect(() => validator.unstable_validate([])).toThrowError(ValidationError);
-    expect(() => validator.unstable_validate([1, 2, 3])).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(["a", "b", "c"])).toThrowError(
-      ValidationError
-    );
+    const result7 = validator.unstable_validate([]);
+    expect(result7.value).toBeUndefined();
+    expect(result7.error).toBeDefined();
+
+    const result8 = validator.unstable_validate([1, 2, 3]);
+    expect(result8.value).toBeUndefined();
+    expect(result8.error).toBeDefined();
+
+    const result9 = validator.unstable_validate(["a", "b", "c"]);
+    expect(result9.value).toBeUndefined();
+    expect(result9.error).toBeDefined();
 
     // Other non-plain objects
-    expect(() => validator.unstable_validate(() => {})).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(Symbol("test"))).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(new Date())).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(/regex/)).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(new Map())).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(new Set())).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(NaN)).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate(Infinity)).toThrowError(
-      ValidationError
-    );
+    const result10 = validator.unstable_validate(() => {});
+    expect(result10.value).toBeUndefined();
+    expect(result10.error).toBeDefined();
+
+    const result11 = validator.unstable_validate(Symbol("test"));
+    expect(result11.value).toBeUndefined();
+    expect(result11.error).toBeDefined();
+
+    const result12 = validator.unstable_validate(new Date());
+    expect(result12.value).toBeUndefined();
+    expect(result12.error).toBeDefined();
+
+    const result13 = validator.unstable_validate(/regex/);
+    expect(result13.value).toBeUndefined();
+    expect(result13.error).toBeDefined();
+
+    const result14 = validator.unstable_validate(new Map());
+    expect(result14.value).toBeUndefined();
+    expect(result14.error).toBeDefined();
+
+    const result15 = validator.unstable_validate(new Set());
+    expect(result15.value).toBeUndefined();
+    expect(result15.error).toBeDefined();
+
+    const result16 = validator.unstable_validate(NaN);
+    expect(result16.value).toBeUndefined();
+    expect(result16.error).toBeDefined();
+
+    const result17 = validator.unstable_validate(Infinity);
+    expect(result17.value).toBeUndefined();
+    expect(result17.error).toBeDefined();
   });
 
   it("should reject objects with invalid property values", () => {
@@ -236,26 +211,33 @@ describe("object", () => {
     });
 
     // Invalid name (not a string)
-    expect(() =>
-      validator.unstable_validate({ name: 123, age: 30 })
-    ).toThrowError(ValidationError);
-    expect(() =>
-      validator.unstable_validate({ name: null, age: 30 })
-    ).toThrowError(ValidationError);
-    expect(() =>
-      validator.unstable_validate({ name: { value: "John" }, age: 30 })
-    ).toThrowError(ValidationError);
+    const result1 = validator.unstable_validate({ name: 123, age: 30 });
+    expect(result1.value).toBeUndefined();
+    expect(result1.error).toBeDefined();
+
+    const result2 = validator.unstable_validate({ name: null, age: 30 });
+    expect(result2.value).toBeUndefined();
+    expect(result2.error).toBeDefined();
+
+    const result3 = validator.unstable_validate({
+      name: { value: "John" },
+      age: 30,
+    });
+    expect(result3.value).toBeUndefined();
+    expect(result3.error).toBeDefined();
 
     // Invalid age (not a number)
-    expect(() =>
-      validator.unstable_validate({ name: "John", age: "30" })
-    ).toThrowError(ValidationError);
-    expect(() =>
-      validator.unstable_validate({ name: "John", age: null })
-    ).toThrowError(ValidationError);
-    expect(() =>
-      validator.unstable_validate({ name: "John", age: true })
-    ).toThrowError(ValidationError);
+    const result4 = validator.unstable_validate({ name: "John", age: "30" });
+    expect(result4.value).toBeUndefined();
+    expect(result4.error).toBeDefined();
+
+    const result5 = validator.unstable_validate({ name: "John", age: null });
+    expect(result5.value).toBeUndefined();
+    expect(result5.error).toBeDefined();
+
+    const result6 = validator.unstable_validate({ name: "John", age: true });
+    expect(result6.value).toBeUndefined();
+    expect(result6.error).toBeDefined();
   });
 
   it("should reject objects with missing properties unless specified as optional", () => {
@@ -264,117 +246,126 @@ describe("object", () => {
       age: number(),
     });
 
-    expect(() => validator.unstable_validate({ name: "John" })).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate({ age: 30 })).toThrowError(
-      ValidationError
-    );
-    expect(() => validator.unstable_validate({})).toThrowError(ValidationError);
+    const result1 = validator.unstable_validate({ name: "John" });
+    expect(result1.value).toBeUndefined();
+    expect(result1.error).toBeDefined();
+
+    const result2 = validator.unstable_validate({ age: 30 });
+    expect(result2.value).toBeUndefined();
+    expect(result2.error).toBeDefined();
+
+    const result3 = validator.unstable_validate({});
+    expect(result3.value).toBeUndefined();
+    expect(result3.error).toBeDefined();
 
     const optionalvalidator = object({
       name: string(),
       age: or([number(), undefined_()]),
     });
 
-    expect(optionalvalidator.unstable_validate({ name: "John" })).toEqual({
-      name: "John",
+    const result4 = optionalvalidator.unstable_validate({ name: "John" });
+    expect(result4.value).toEqual({ name: "John" });
+    expect(result4.error).toBeUndefined();
+  });
+
+  it("should return the original value", () => {
+    const value = { name: "Test" };
+    const result = object().unstable_validate(value);
+    expect(result.value).toBe(value);
+  });
+
+  it("should include schema", () => {
+    // Empty object
+    expect(object().schema).toEqual({
+      type: "object",
+      properties: {},
+    });
+
+    // Object with properties
+    expect(
+      object({
+        name: string(),
+        age: number(),
+        isActive: boolean(),
+      }).schema
+    ).toEqual({
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        age: { type: "number" },
+        isActive: { type: "boolean" },
+      },
+    });
+
+    // Object with nested properties
+    expect(
+      object({
+        user: object({
+          name: string(),
+          age: number(),
+        }),
+      }).schema
+    ).toEqual({
+      type: "object",
+      properties: {
+        user: {
+          type: "object",
+          properties: { name: { type: "string" }, age: { type: "number" } },
+        },
+      },
     });
   });
 
-  it("should throw ValidationError with full details for non-object violation", () => {
+  it("should include rules", () => {
+    expect(object().rules).toEqual({});
+    expect(object({ name: string() }).rules).toEqual({});
+    expect(object({ name: string(), age: number() }).rules).toEqual({});
+  });
+
+  it("should include schema information in error", () => {
+    expect(object().unstable_validate(123).error).toMatchObject({
+      schema: { type: "object", properties: {} },
+    });
+  });
+
+  it("should include 'schema' path in error in case of schema violation", () => {
+    const input = 123;
     const validator = object();
-
-    try {
-      validator.unstable_validate("not an object");
-      expect.fail();
-    } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError);
-      expect((error as ValidationError).path).toEqual({
-        type: "schema",
-        data: "not an object",
-      });
-      expect((error as ValidationError).schema).toEqual({
-        type: "object",
-        properties: {},
-      });
-      expect((error as ValidationError).rules).toEqual({});
-      expect((error as ValidationError).message).toBe(
-        'Validation failed due to schema mismatch; expected schema: {"type":"object","properties":{}}; received value: "not an object"'
-      );
-    }
+    const result = validator.unstable_validate(input);
+    expect(result.error).toMatchObject({
+      path: { type: "schema", data: input },
+    });
   });
 
-  it("should throw ValidationError with full details for property validation failure", () => {
-    const validator = object({
-      name: string(),
-      age: number(),
-    });
-
-    try {
-      validator.unstable_validate({ name: 123, age: 30 });
-      expect.fail();
-    } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError);
-      expect((error as ValidationError).path).toEqual({
+  it("should include 'property' path in error in case of property violation", () => {
+    const input = { name: 123 };
+    const validator = object({ name: string() });
+    const result = validator.unstable_validate(input);
+    expect(result.error).toMatchObject({
+      path: {
         type: "property",
         property: "name",
-        path: {
-          type: "schema",
-          data: 123,
-        },
-        data: { name: 123, age: 30 },
-      });
-      expect((error as ValidationError).schema).toEqual({
-        type: "string",
-      });
-      expect((error as ValidationError).rules).toEqual({});
-      expect((error as ValidationError).message).toBe(
-        'Validation failed at name due to schema mismatch; expected schema: {"type":"string"}; received value: 123'
-      );
-    }
-  });
-
-  it("should throw ValidationError with full details for nested property validation failure", () => {
-    const validator = object({
-      user: object({
-        profile: object({
-          name: string(),
-        }),
-      }),
+        path: { type: "schema", data: input["name"] },
+        data: input,
+      },
     });
 
-    try {
-      validator.unstable_validate({ user: { profile: { name: 123 } } });
-      expect.fail();
-    } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError);
-      expect((error as ValidationError).path).toEqual({
+    // Nested property
+    const input2 = { user: { name: 123 } };
+    const validator2 = object({ user: object({ name: string() }) });
+    const result2 = validator2.unstable_validate(input2);
+    expect(result2.error).toMatchObject({
+      path: {
         type: "property",
         property: "user",
         path: {
           type: "property",
-          property: "profile",
-          path: {
-            type: "property",
-            property: "name",
-            path: {
-              type: "schema",
-              data: 123,
-            },
-            data: { name: 123 },
-          },
-          data: { profile: { name: 123 } },
+          property: "name",
+          path: { type: "schema", data: input2["user"]["name"] },
+          data: input2["user"],
         },
-        data: { user: { profile: { name: 123 } } },
-      });
-      expect((error as ValidationError).schema).toEqual({
-        type: "string",
-      });
-      expect((error as ValidationError).rules).toEqual({});
-      expect((error as ValidationError).message).toBe(
-        'Validation failed at user.profile.name due to schema mismatch; expected schema: {"type":"string"}; received value: 123'
-      );
-    }
+        data: input2,
+      },
+    });
   });
 });
