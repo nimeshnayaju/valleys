@@ -6,10 +6,9 @@ Lightweight, zero-dependency library for validating arbitrary runtime data in Ty
 npm install valleys
 ```
 
-## Quick Start
+### Quick start
 
-`valleys` validates your data and narrows its type in-place. Your original values remain unchanged - only their TypeScript types are refined. The `validate` function runs a runtime check and, on success, asserts the original variable's type. On failure, it throws a
-`ValidationError`.
+`valleys` validates your data and narrows its type in-place. Your original values remain unchanged - only their TypeScript types are refined. The `validate` function runs a runtime check and, on success, asserts the original variable's type. On failure, it throws a `ValidationError`.
 
 ```ts
 import { object, string, number, validate } from "valleys";
@@ -26,17 +25,28 @@ console.log(input.id, input.name);
 
 Libraries like [Zod](https://zod.dev/), [Valibot](https://valibot.dev/), [Decoders](https://decoders.cc/), etc typically return a new (often transformed) value from `.parse()`. `valleys` instead asserts types directly - this provides several performance benefits as no time is spent copying arrays, strings or nested objects. This makes `valleys` ideal for performance-critical applications where memory efficiency and speed matter.
 
+### Benchmarks
+
+- **[`valleys` vs `zod`](https://github.com/nimeshnayaju/zod)** - Compares Valleys with Zod 4 and Zod 3 using the official benchmarks used by Zod to compare Zod 4 against Zod 3.
+
+- **[`valleys` vs `zod` vs `valibot`](https://github.com/nimeshnayaju/valibot-benchmarks)** - Compares Valleys against Zod 4 and Valibot across different environments (Node.js, Bun, Deno) - forked from benchmarks maintained by [@naruaway](https://github.com/naruaway).
+
+These early benchmarks suggest that `valleys` consistently outperforms other validation libraries like Zod and Valibot across all scenarios. For basic validation like strings and numbers, `valleys` is about 1.5-2x faster than Zod 4. However, the real performance gains become apparent when you add validation rules - `valleys` becomes dramatically faster, often 20-30x faster than alternatives when checking things like string length limits, number ranges, or array sizes.
+
 ### Error handling
 
-`valleys` uses a fail-fast approach - validation stops and throws an error immediately when the first validation failure is encountered. This provides better performance and clearer error messages by focusing on the first issue found. The `validate` function throws a `ValidationError` if validation fails. This error object includes the path to the exact location of the validation failure (e.g., nested objects/arrays), the expected schema and ruleset that the value failed to match. Additionally, the error includes a pre-formatted human-readable error message.
+When validation fails, `valleys` takes an equally thoughtful approach. Rather than being prescriptive about error formatting, it exposes a structured error system with an AST-like path that precisely indicates where validation failed. It does include a sensible default error message for debugging, but you can also traverse the error path to build whatever error handling approach fits your application - from simple logging to sophisticated user-facing messages.
 
-Example error message:
+The `validate` function throws a `ValidationError` if validation fails; you can catch this error and traverse its `path` property, then inspect the `schema` and `rules` properties to get more information about the error or to build custom error messages.
+
+**Example error message:**
 
 ```
-Validation failed at user.age due to schema mismatch; expected schema: {"type":"number"}
+Validation failed at user.age due to schema mismatch; expected schema: {"type":"number"}; received value: "ten"
 ```
 
-For more control over error messages, you can catch `ValidationError` and traverse its `path` property to build custom messages.
+> [!NOTE]  
+> `valleys` follows a fail-fast approach, immediately throwing when validation fails, which provides better performance and clearer error messages by focusing on the first issue encountered.
 
 ### API Reference
 
@@ -230,7 +240,7 @@ validate(
 
 #### `InferOutputOf<D>`
 
-A type utility that extracts the output type from a validator. Useful when you need to reference the type that a validaator validates.
+A type utility that extracts the output type from a validator. Useful when you need to reference the type that a validator validates.
 
 ```ts
 import { object, string, number, InferOutputOf } from "valleys";
