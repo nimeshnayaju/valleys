@@ -179,29 +179,13 @@ describe("object", () => {
     expect(result11.value).toBeUndefined();
     expect(result11.error).toBeDefined();
 
-    const result12 = validator.unstable_validate(new Date());
+    const result12 = validator.unstable_validate(NaN);
     expect(result12.value).toBeUndefined();
     expect(result12.error).toBeDefined();
 
-    const result13 = validator.unstable_validate(/regex/);
+    const result13 = validator.unstable_validate(Infinity);
     expect(result13.value).toBeUndefined();
     expect(result13.error).toBeDefined();
-
-    const result14 = validator.unstable_validate(new Map());
-    expect(result14.value).toBeUndefined();
-    expect(result14.error).toBeDefined();
-
-    const result15 = validator.unstable_validate(new Set());
-    expect(result15.value).toBeUndefined();
-    expect(result15.error).toBeDefined();
-
-    const result16 = validator.unstable_validate(NaN);
-    expect(result16.value).toBeUndefined();
-    expect(result16.error).toBeDefined();
-
-    const result17 = validator.unstable_validate(Infinity);
-    expect(result17.value).toBeUndefined();
-    expect(result17.error).toBeDefined();
   });
 
   it("should reject objects with invalid property values", () => {
@@ -265,6 +249,25 @@ describe("object", () => {
 
     const result4 = optionalvalidator.unstable_validate({ name: "John" });
     expect(result4.value).toEqual({ name: "John" });
+    expect(result4.error).toBeUndefined();
+  });
+
+  it("should accept non-plain objects", () => {
+    const validator = object();
+    const result1 = validator.unstable_validate(new Date());
+    expect(result1.value).toBeDefined();
+    expect(result1.error).toBeUndefined();
+
+    const result2 = validator.unstable_validate(/regex/);
+    expect(result2.value).toBeDefined();
+    expect(result2.error).toBeUndefined();
+
+    const result3 = validator.unstable_validate(new Map());
+    expect(result3.value).toBeDefined();
+    expect(result3.error).toBeUndefined();
+
+    const result4 = validator.unstable_validate(new Set());
+    expect(result4.value).toBeDefined();
     expect(result4.error).toBeUndefined();
   });
 

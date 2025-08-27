@@ -402,12 +402,7 @@ export function object<T extends Record<string, Validator<any, any, any>>>(
 > {
   return {
     unstable_validate(value: unknown) {
-      if (
-        value === null ||
-        value === undefined ||
-        typeof value !== "object" ||
-        Object.prototype.toString.call(value) !== "[object Object]"
-      ) {
+      if (typeof value !== "object" || value === null || Array.isArray(value)) {
         return {
           error: {
             path: { type: "schema", data: value },
