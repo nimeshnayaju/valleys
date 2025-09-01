@@ -88,7 +88,7 @@ describe("null_", () => {
 
   it("should include schema information in error", () => {
     expect(null_().unstable_validate("not null").error).toMatchObject({
-      schema: { type: "null" },
+      context: { schema: { type: "null" } },
     });
   });
 
@@ -97,7 +97,8 @@ describe("null_", () => {
     const validator = null_();
     const result = validator.unstable_validate(input);
     expect(result.error).toMatchObject({
-      path: { type: "schema", data: input },
+      type: "schema-violation",
+      data: input,
     });
   });
 

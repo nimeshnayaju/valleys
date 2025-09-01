@@ -93,7 +93,9 @@ describe("or", () => {
     expect(
       or([string(), number()]).unstable_validate(true).error
     ).toMatchObject({
-      schema: { type: "or", item: [{ type: "string" }, { type: "number" }] },
+      context: {
+        schema: { type: "or", item: [{ type: "string" }, { type: "number" }] },
+      },
     });
   });
 
@@ -101,7 +103,8 @@ describe("or", () => {
     const validator = or([string(), number()]);
     const result = validator.unstable_validate(true);
     expect(result.error).toMatchObject({
-      path: { type: "schema", data: true },
+      type: "schema-violation",
+      data: true,
     });
   });
 

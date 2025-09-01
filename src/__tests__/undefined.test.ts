@@ -86,7 +86,7 @@ describe("undefined_", () => {
   it("should include schema information in error", () => {
     expect(undefined_().unstable_validate("not undefined").error).toMatchObject(
       {
-        schema: { type: "undefined" },
+        context: { schema: { type: "undefined" } },
       }
     );
   });
@@ -96,7 +96,8 @@ describe("undefined_", () => {
     const validator = undefined_();
     const result = validator.unstable_validate(input);
     expect(result.error).toMatchObject({
-      path: { type: "schema", data: input },
+      type: "schema-violation",
+      data: input,
     });
   });
 });

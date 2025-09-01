@@ -87,7 +87,7 @@ describe("boolean", () => {
 
   it("should include schema information in error", () => {
     expect(boolean().unstable_validate("not a boolean").error).toMatchObject({
-      schema: { type: "boolean" },
+      context: { schema: { type: "boolean" } },
     });
   });
 
@@ -96,7 +96,8 @@ describe("boolean", () => {
     const validator = boolean();
     const result = validator.unstable_validate(input);
     expect(result.error).toMatchObject({
-      path: { type: "schema", data: input },
+      type: "schema-violation",
+      data: input,
     });
   });
 });

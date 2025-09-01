@@ -217,7 +217,7 @@ describe("iso8601", () => {
 
   it("should include schema information in error", () => {
     expect(iso8601().unstable_validate(123).error).toMatchObject({
-      schema: { type: "iso8601" },
+      context: { schema: { type: "iso8601" } },
     });
   });
 
@@ -226,7 +226,8 @@ describe("iso8601", () => {
     const validator = iso8601();
     const result = validator.unstable_validate(input);
     expect(result.error).toMatchObject({
-      path: { type: "schema", data: input },
+      type: "schema-violation",
+      data: input,
     });
   });
 });

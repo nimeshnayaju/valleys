@@ -184,7 +184,7 @@ describe("array", () => {
 
     it("should include schema information in error", () => {
       expect(array().unstable_validate(123).error).toMatchObject({
-        schema: { type: "array" },
+        context: { schema: { type: "array" } },
       });
     });
 
@@ -192,7 +192,12 @@ describe("array", () => {
       const validator = array(string());
       const result = validator.unstable_validate([1, 2, 3]);
       expect(result.error).toMatchObject({
-        schema: { type: "string" },
+        type: "array-index",
+        data: [1, 2, 3],
+        entry: {
+          index: 0,
+          node: { type: "schema-violation", data: 1 },
+        },
       });
     });
 
@@ -200,7 +205,12 @@ describe("array", () => {
       const validator = array(string({ minLength: 10 }));
       const result = validator.unstable_validate(["a", "b", "c"]);
       expect(result.error).toMatchObject({
-        rules: { minLength: 10 },
+        type: "array-index",
+        data: ["a", "b", "c"],
+        entry: {
+          index: 0,
+          node: { type: "rule-violation", rule: "minLength", data: "a" },
+        },
       });
     });
 
@@ -208,7 +218,7 @@ describe("array", () => {
       "should include rules information in error",
       ({ input, rules }) => {
         expect(array(rules).unstable_validate(input).error).toMatchObject({
-          rules,
+          context: { rules },
         });
       }
     );
@@ -221,7 +231,8 @@ describe("array", () => {
       expect(result.error).toBeDefined();
 
       expect(result.error).toMatchObject({
-        path: { type: "schema", data: input },
+        type: "schema-violation",
+        data: input,
       });
     });
 
@@ -233,12 +244,9 @@ describe("array", () => {
       expect(result.error).toBeDefined();
 
       expect(result.error).toMatchObject({
-        path: {
-          type: "item",
-          index: 0,
-          path: { type: "schema", data: input[0] },
-          data: input,
-        },
+        type: "array-index",
+        data: input,
+        entry: { index: 0, node: { type: "schema-violation", data: input[0] } },
       });
     });
   });
@@ -300,11 +308,9 @@ describe("array", () => {
         expect(result.error).toBeDefined();
 
         expect(result.error).toMatchObject({
-          path: {
-            type: "rule",
-            rule: "minLength",
-            data: input,
-          },
+          type: "rule-violation",
+          rule: "minLength",
+          data: input,
         });
       });
     });

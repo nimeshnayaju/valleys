@@ -153,7 +153,7 @@ describe("constant", () => {
     const validator = constant("test");
     const result = validator.unstable_validate("actual");
     expect(result.error).toMatchObject({
-      schema: { type: "constant", value: "test" },
+      context: { schema: { type: "constant", value: "test" } },
     });
   });
 
@@ -162,7 +162,8 @@ describe("constant", () => {
     const validator = constant("test");
     const result = validator.unstable_validate(input);
     expect(result.error).toMatchObject({
-      path: { type: "schema", data: input },
+      type: "schema-violation",
+      data: input,
     });
   });
 

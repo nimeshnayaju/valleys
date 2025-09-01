@@ -82,7 +82,7 @@ describe("string", () => {
 
   it("should include schema information in error", () => {
     expect(string().unstable_validate(123).error).toMatchObject({
-      schema: { type: "string" },
+      context: { schema: { type: "string" } },
     });
   });
 
@@ -92,7 +92,7 @@ describe("string", () => {
     { input: "123", rules: { minLength: 5, maxLength: 10 } },
   ])("should include rules information in error", ({ input, rules }) => {
     expect(string(rules).unstable_validate(input).error).toMatchObject({
-      rules,
+      context: { rules },
     });
   });
 
@@ -101,7 +101,8 @@ describe("string", () => {
     const validator = string();
     const result = validator.unstable_validate(input);
     expect(result.error).toMatchObject({
-      path: { type: "schema", data: input },
+      type: "schema-violation",
+      data: input,
     });
   });
 
@@ -138,7 +139,9 @@ describe("string", () => {
         const validator = string({ minLength: 5 });
         const result = validator.unstable_validate(input);
         expect(result.error).toMatchObject({
-          path: { type: "rule", rule: "minLength", data: input },
+          type: "rule-violation",
+          rule: "minLength",
+          data: input,
         });
       });
     });
@@ -175,7 +178,9 @@ describe("string", () => {
         const validator = string({ maxLength: 2 });
         const result = validator.unstable_validate(input);
         expect(result.error).toMatchObject({
-          path: { type: "rule", rule: "maxLength", data: input },
+          type: "rule-violation",
+          rule: "maxLength",
+          data: input,
         });
       });
     });

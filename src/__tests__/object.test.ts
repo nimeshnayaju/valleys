@@ -327,23 +327,35 @@ describe("object", () => {
 
   it("should include schema information in error", () => {
     expect(object().unstable_validate(123).error).toMatchObject({
-      schema: { type: "object", properties: {} },
+      context: { schema: { type: "object", properties: {} } },
     });
   });
 
   it("should include schema information of property in error in case of property violation", () => {
+    const input = { name: 123 };
     const validator = object({ name: string() });
-    const result = validator.unstable_validate({ name: 123 });
+    const result = validator.unstable_validate(input);
     expect(result.error).toMatchObject({
-      schema: { type: "string" },
+      type: "object-property",
+      data: input,
+      entry: {
+        property: "name",
+        node: { type: "schema-violation", data: input.name },
+      },
     });
   });
 
   it("should include rule information in error in case of rule violation of a property", () => {
+    const input = { name: "John" };
     const validator = object({ name: string({ minLength: 10 }) });
-    const result = validator.unstable_validate({ name: "John" });
+    const result = validator.unstable_validate(input);
     expect(result.error).toMatchObject({
-      rules: { minLength: 10 },
+      type: "object-property",
+      data: input,
+      entry: {
+        property: "name",
+        node: { type: "rule-violation", rule: "minLength", data: input.name },
+      },
     });
   });
 
@@ -352,7 +364,8 @@ describe("object", () => {
     const validator = object();
     const result = validator.unstable_validate(input);
     expect(result.error).toMatchObject({
-      path: { type: "schema", data: input },
+      type: "schema-violation",
+      data: input,
     });
   });
 
@@ -361,11 +374,11 @@ describe("object", () => {
     const validator = object({ name: string() });
     const result = validator.unstable_validate(input);
     expect(result.error).toMatchObject({
-      path: {
-        type: "property",
+      type: "object-property",
+      data: input,
+      entry: {
         property: "name",
-        path: { type: "schema", data: input["name"] },
-        data: input,
+        node: { type: "schema-violation", data: input["name"] },
       },
     });
 
@@ -374,16 +387,17 @@ describe("object", () => {
     const validator2 = object({ user: object({ name: string() }) });
     const result2 = validator2.unstable_validate(input2);
     expect(result2.error).toMatchObject({
-      path: {
-        type: "property",
+      type: "object-property",
+      data: input2,
+      entry: {
         property: "user",
-        path: {
-          type: "property",
-          property: "name",
-          path: { type: "schema", data: input2["user"]["name"] },
-          data: input2["user"],
+        node: {
+          type: "object-property",
+          entry: {
+            property: "name",
+            node: { type: "schema-violation", data: input2["user"]["name"] },
+          },
         },
-        data: input2,
       },
     });
   });

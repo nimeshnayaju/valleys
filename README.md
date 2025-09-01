@@ -1,5 +1,27 @@
 Lightweight, zero-dependency library for validating arbitrary runtime data in TypeScript. `valleys` provides assertion-based validation that refines your types in-place — no cloning, no transformations, and minimal runtime overhead.
 
+## Table of Contents
+
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [Benchmarks](#benchmarks)
+- [Error handling](#error-handling)
+- [API Reference](#api-reference)
+  - [`string()`](#string)
+  - [`number()`](#number)
+  - [`boolean()`](#boolean)
+  - [`constant()`](#constant)
+  - [`null_()`](#null_)
+  - [`undefined_()`](#undefined_)
+  - [`iso8601()`](#iso8601)
+  - [`array()`](#array)
+  - [`object()`](#object)
+  - [`or()`](#or)
+- [Exported types](#exported-types)
+  - [`InferOutputOf<D>`](#inferoutputofd)
+  - [`Iso8601`](#iso8601-1)
+- [Acknowledgements](#acknowledgements)
+
 ### Installation
 
 ```bash
@@ -27,9 +49,9 @@ Libraries like [Zod](https://zod.dev/), [Valibot](https://valibot.dev/), [Decode
 
 ### Benchmarks
 
-- **[`valleys` vs `zod`](https://github.com/nimeshnayaju/zod)** - Compares Valleys with Zod 4 and Zod 3 using the official benchmarks used by Zod to compare Zod 4 against Zod 3.
+- **[`valleys` vs `zod`](https://github.com/nimeshnayaju/zod?tab=readme-ov-file#benchmarks)** - Compares Valleys with Zod 4 and Zod 3 using the official benchmarks used by Zod to compare Zod 4 against Zod 3.
 
-- **[`valleys` vs `zod` vs `valibot`](https://github.com/nimeshnayaju/valibot-benchmarks)** - Compares Valleys against Zod 4 and Valibot across different environments (Node.js, Bun, Deno) - forked from benchmarks maintained by [@naruaway](https://github.com/naruaway).
+- **[`valleys` vs `zod` vs `valibot`](https://github.com/nimeshnayaju/valibot-benchmarks?tab=readme-ov-file#relative-performance-valleys-vs-others)** - Compares Valleys against Zod 4 and Valibot across different environments (Node.js, Bun, Deno) - forked from benchmarks maintained by [@naruaway](https://github.com/naruaway).
 
 These early benchmarks suggest that `valleys` consistently outperforms other validation libraries like Zod and Valibot across all scenarios. For basic validation like strings and numbers, `valleys` is about 1.5-2x faster than Zod 4. However, the real performance gains become apparent when you add validation rules - `valleys` becomes dramatically faster, often 20-30x faster than alternatives when checking things like string length limits, number ranges, or array sizes.
 

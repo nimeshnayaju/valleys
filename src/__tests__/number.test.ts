@@ -76,7 +76,7 @@ describe("number", () => {
 
   it("should include schema information in error", () => {
     expect(number().unstable_validate("123").error).toMatchObject({
-      schema: { type: "number" },
+      context: { schema: { type: "number" } },
     });
   });
 
@@ -86,7 +86,7 @@ describe("number", () => {
     { input: 3, rules: { min: 5, max: 10 } },
   ])("should include rules information in error", ({ input, rules }) => {
     expect(number(rules).unstable_validate(input).error).toMatchObject({
-      rules,
+      context: { rules },
     });
   });
 
@@ -95,7 +95,8 @@ describe("number", () => {
     const validator = number();
     const result = validator.unstable_validate(input);
     expect(result.error).toMatchObject({
-      path: { type: "schema", data: input },
+      type: "schema-violation",
+      data: input,
     });
   });
 
@@ -139,7 +140,9 @@ describe("number", () => {
         const validator = number({ min: 10 });
         const result = validator.unstable_validate(input);
         expect(result.error).toMatchObject({
-          path: { type: "rule", rule: "min", data: input },
+          type: "rule-violation",
+          rule: "min",
+          data: input,
         });
       });
     });
@@ -183,7 +186,9 @@ describe("number", () => {
         const validator = number({ max: 10 });
         const result = validator.unstable_validate(input);
         expect(result.error).toMatchObject({
-          path: { type: "rule", rule: "max", data: input },
+          type: "rule-violation",
+          rule: "max",
+          data: input,
         });
       });
     });
@@ -228,7 +233,9 @@ describe("number", () => {
         const validator = number({ min: 10, max: 20 });
         const result = validator.unstable_validate(input);
         expect(result.error).toMatchObject({
-          path: { type: "rule", rule: "min", data: input },
+          type: "rule-violation",
+          rule: "min",
+          data: input,
         });
       });
     });
