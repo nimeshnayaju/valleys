@@ -59,7 +59,20 @@ These early benchmarks suggest that `valleys` consistently outperforms other val
 
 When validation fails, `valleys` takes an equally thoughtful approach. Rather than being prescriptive about error formatting, it exposes a structured error system with an AST-like path that precisely indicates where validation failed. It does include a sensible default error message for debugging, but you can also traverse the error path to build whatever error handling approach fits your application - from simple logging to sophisticated user-facing messages.
 
-The `validate` function throws a `ValidationError` if validation fails; you can catch this error and traverse its `path` property, then inspect the `schema` and `rules` properties to get more information about the error or to build custom error messages.
+The `validate` function throws a `ValidationError` if validation fails; you can catch this error and traverse its `root` property to build custom error handling:
+
+```ts
+import { validate, object, string, number } from "valleys";
+
+try {
+  validate(input, object({ name: string(), age: number() }));
+} catch (error) {
+  if (error instanceof ValidationError) {
+    // Access the structured error tree
+    console.log(error.root);
+  }
+}
+```
 
 **Example error message:**
 
