@@ -415,20 +415,24 @@ export function object(): Validator<
   { type: "object"; properties: Record<string, { type: string }> }
 >;
 export function object<T extends Record<string, Validator<any, any, any>>>(
-  validators: T
+  fields: T
 ): Validator<
   ObjectValidatorType<T>,
   { type: "object"; properties: { [K in keyof T]: T[K]["schema"] } }
->;
+> & {
+  fields: T;
+};
 export function object<T extends Record<string, Validator<any, any, any>>>(
-  validators?: T
+  fields?: T
 ): Validator<
   ObjectValidatorType<T>,
   { type: "object"; properties: Record<string, { type: string }> }
-> {
-  const properties = validators ? Object.keys(validators) : [];
-  const _validators = validators
-    ? properties.map((k) => validators[k] as Validator<unknown>)
+> & {
+  fields?: T;
+} {
+  const properties = fields ? Object.keys(fields) : [];
+  const _validators = fields
+    ? properties.map((k) => fields[k] as Validator<unknown>)
     : [];
   const numOfProperties = properties.length;
 
@@ -477,6 +481,7 @@ export function object<T extends Record<string, Validator<any, any, any>>>(
       ),
     },
     rules: {},
+    fields: fields,
   };
 }
 
@@ -810,7 +815,9 @@ export function validate<D extends Validator<any, any, any>>(
 ): asserts value is InferOutputOf<D> {
   const result = validator.unstable_validate(value);
   if (result.error !== undefined) {
-    throw new ValidationError(result.error);
+    const error = new ValidationError(result.error);
+    Error.captureStackTrace(error, validate);
+    throw error;
   }
   return result.value as InferOutputOf<D>;
 }
