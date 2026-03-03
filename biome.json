@@ -1,0 +1,40 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.4.5/schema.json",
+	"files": {
+		"includes": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.json"],
+		"ignoreUnknown": true
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"style": {
+				"useTemplate": "off"
+			},
+			"suspicious": {
+				"noExplicitAny": "off"
+			},
+			"complexity": {
+				"noBannedTypes": "off"
+			}
+		}
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab"
+	},
+	"assist": {
+		"enabled": true,
+		"actions": {
+			"source": {
+				"organizeImports": "on",
+				"useSortedAttributes": "on"
+			}
+		}
+	},
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	}
+}
