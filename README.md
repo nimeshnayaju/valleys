@@ -136,6 +136,16 @@ validate(input, boolean());
 // input is typed as boolean
 ```
 
+#### `url()`
+
+Valides that a string is a valid URL.
+
+```ts
+import { url, validate } from "valleys";
+
+validate(input, url());
+```
+
 #### `constant()`
 
 Validates that a value is exactly equal to a specific literal value.

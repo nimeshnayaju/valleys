@@ -249,6 +249,37 @@ export function boolean(): Validator<boolean, { type: "boolean" }, {}> {
 }
 
 /* -------------------------------------------------------------------------------------------------
+ * url
+ * -----------------------------------------------------------------------------------------------*/
+
+/**
+ * Creates a validator that validates URL strings.
+ *
+ * @returns A validator for URL strings
+ */
+export function url(): Validator<string, { type: "url" }, {}> {
+  return {
+    unstable_validate(input: unknown) {
+      if (typeof input !== "string" || !URL.canParse(input)) {
+        return {
+          error: {
+            type: "schema-violation",
+            data: input,
+            context: {
+              schema: this.schema,
+              rules: this.rules,
+            },
+          },
+        };
+      }
+      return { value: input };
+    },
+    schema: { type: "url" },
+    rules: {},
+  };
+}
+
+/* -------------------------------------------------------------------------------------------------
  * constant
  * -----------------------------------------------------------------------------------------------*/
 
