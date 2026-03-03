@@ -10,6 +10,7 @@ Lightweight, zero-dependency library for validating arbitrary runtime data in Ty
   - [`string()`](#string)
   - [`number()`](#number)
   - [`boolean()`](#boolean)
+  - [`url()`](#url)
   - [`constant()`](#constant)
   - [`null_()`](#null_)
   - [`undefined_()`](#undefined_)
@@ -69,7 +70,7 @@ try {
 } catch (error) {
   if (error instanceof ValidationError) {
     // Access the structured error tree
-    console.log(error.root);
+    console.log(error.experimental_root);
   }
 }
 ```
@@ -144,6 +145,7 @@ Valides that a string is a valid URL.
 import { url, validate } from "valleys";
 
 validate(input, url());
+// input is typed as UrlString (a branded string type)
 ```
 
 #### `constant()`
@@ -196,7 +198,7 @@ Validates that a value is a valid ISO 8601 datetime string with timezone.
 import { iso8601, validate } from "valleys";
 
 validate(input, iso8601());
-// input is typed as Iso8601 (a branded string type)
+// input is typed as Iso8601String (a branded string type)
 
 // Valid examples:
 // "2024-01-15T10:30:00Z"
@@ -295,16 +297,38 @@ type User = InferOutputOf<typeof userValidator>;
 // User is { id: number; name: string }
 ```
 
-#### `Iso8601`
+#### `Iso8601String`
 
 A branded string type for ISO 8601 date strings that can only be obtained after validating using the `iso8601` validator.
 
 ```ts
-import { Iso8601 } from "valleys";
+import { Iso8601String, iso8601, validate } from "valleys";
 
-function formatDate(date: Iso8601): string {
+function formatDate(date: Iso8601String): string {
   return new Date(date).toLocaleDateString();
 }
+
+const input = "2024-01-01T12:00:00Z";
+validate(input, iso8601());
+// input is now Iso8601String
+formatDate(input);
+```
+
+#### `UrlString`
+
+A branded string type for valid URL strings that can only be obtained after validating using the `url` validator.
+
+```ts
+import { UrlString, url, validate } from "valleys";
+
+function parseUrl(value: UrlString): URL {
+  return new URL(value);
+}
+
+const input = "https://example.com/path";
+validate(input, url());
+// input is now UrlString
+const parsed = parseUrl(input);
 ```
 
 ### Acknowledgements

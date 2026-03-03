@@ -55,7 +55,7 @@ describe("validate", () => {
 			expect.fail("Expected ValidationError to be thrown");
 		} catch (error) {
 			expect(error).toBeInstanceOf(ValidationError);
-			expect((error as ValidationError).root).toBe(
+			expect((error as ValidationError).experimental_root).toBe(
 				validateFn.mock.results[0].value.error,
 			);
 		}

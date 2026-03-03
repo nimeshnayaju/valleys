@@ -262,12 +262,14 @@ export function boolean(): Validator<boolean, { type: "boolean" }, {}> {
  * url
  * -----------------------------------------------------------------------------------------------*/
 
+export type UrlString = Brand<string, "UrlString">;
+
 /**
  * Creates a validator that validates URL strings.
  *
  * @returns A validator for URL strings
  */
-export function url(): Validator<string, { type: "url" }, {}> {
+export function url(): Validator<UrlString, { type: "url" }, {}> {
 	const schema = { type: "url" } as const;
 	const rules = {};
 
@@ -285,7 +287,7 @@ export function url(): Validator<string, { type: "url" }, {}> {
 					},
 				};
 			}
-			return { value: input };
+			return { value: input as UrlString };
 		},
 		schema: schema,
 		rules: rules,
@@ -543,7 +545,7 @@ export function object<T extends Record<string, Validator<any, any, any>>>(
 /**
  * A branded type representing a valid ISO 8601 date-time string.
  */
-export type Iso8601 = Brand<string, "Iso8601">;
+export type Iso8601String = Brand<string, "Iso8601String">;
 
 const iso8601Regex =
 	/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:[.]\d+)?(?:Z|[+-]\d{2}:?\d{2})$/;
@@ -553,7 +555,7 @@ const iso8601Regex =
  *
  * @returns A validator for ISO 8601 date-time strings
  */
-export function iso8601(): Validator<Iso8601, { type: "iso8601" }> {
+export function iso8601(): Validator<Iso8601String, { type: "iso8601" }> {
 	const schema = { type: "iso8601" } as const;
 	const rules = {};
 
@@ -584,7 +586,7 @@ export function iso8601(): Validator<Iso8601, { type: "iso8601" }> {
 					},
 				};
 			}
-			return { value: input as Iso8601 };
+			return { value: input as Iso8601String };
 		},
 		schema: schema,
 		rules: rules,
@@ -774,7 +776,7 @@ export class ValidationError extends Error {
 		this.#root = node;
 	}
 
-	get root(): ErrorPathNode | ErrorLeafNode {
+	get experimental_root(): ErrorPathNode | ErrorLeafNode {
 		return this.#root;
 	}
 }
