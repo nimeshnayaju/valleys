@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+	any,
 	array,
 	boolean,
 	number,
 	object,
-	or,
+	optional,
 	string,
-	undefined_,
 } from "../index";
 
 describe("object", () => {
@@ -244,12 +244,66 @@ describe("object", () => {
 
 		const optionalvalidator = object({
 			name: string(),
-			age: or([number(), undefined_()]),
+			age: optional(number()),
 		});
 
 		const result4 = optionalvalidator.unstable_validate({ name: "John" });
 		expect(result4.value).toEqual({ name: "John" });
 		expect(result4.error).toBeUndefined();
+	});
+
+	it("should require any() fields", () => {
+		const validator = object({ payload: any() });
+
+		const result1 = validator.unstable_validate({ payload: null });
+		expect(result1.value).toEqual({ payload: null });
+		expect(result1.error).toBeUndefined();
+
+		const result2 = validator.unstable_validate({});
+		expect(result2.value).toBeUndefined();
+		expect(result2.error).toBeDefined();
+	});
+
+	it("should allow absent optional any() fields", () => {
+		const validator = object({ payload: optional(any()) });
+
+		const result1 = validator.unstable_validate({});
+		expect(result1.value).toEqual({});
+		expect(result1.error).toBeUndefined();
+
+		const result2 = validator.unstable_validate({ payload: "data" });
+		expect(result2.value).toEqual({ payload: "data" });
+		expect(result2.error).toBeUndefined();
+	});
+
+	it("should reject present optional fields with undefined values", () => {
+		const validator = object({ payload: optional(any()) });
+
+		const result = validator.unstable_validate({ payload: undefined });
+		expect(result.value).toBeUndefined();
+		expect(result.error).toMatchObject({
+			type: "object-property",
+			entry: {
+				property: "payload",
+				node: { type: "schema-violation", data: undefined },
+			},
+		});
+	});
+
+	it("should validate optional known fields when present", () => {
+		const validator = object({ name: optional(string()) });
+
+		const result1 = validator.unstable_validate({});
+		expect(result1.value).toEqual({});
+		expect(result1.error).toBeUndefined();
+
+		const result2 = validator.unstable_validate({ name: "Alice" });
+		expect(result2.value).toEqual({ name: "Alice" });
+		expect(result2.error).toBeUndefined();
+
+		const result3 = validator.unstable_validate({ name: null });
+		expect(result3.value).toBeUndefined();
+		expect(result3.error).toBeDefined();
 	});
 
 	it("should accept non-plain objects", () => {
@@ -282,6 +336,7 @@ describe("object", () => {
 		expect(object().schema).toEqual({
 			type: "object",
 			properties: {},
+			required: [],
 		});
 
 		// Object with properties
@@ -298,6 +353,21 @@ describe("object", () => {
 				age: { type: "number" },
 				isActive: { type: "boolean" },
 			},
+			required: ["name", "age", "isActive"],
+		});
+
+		expect(
+			object({
+				required: string(),
+				optional: optional(string()),
+			}).schema,
+		).toEqual({
+			type: "object",
+			properties: {
+				required: { type: "string" },
+				optional: { type: "string" },
+			},
+			required: ["required"],
 		});
 
 		// Object with nested properties
@@ -313,9 +383,14 @@ describe("object", () => {
 			properties: {
 				user: {
 					type: "object",
-					properties: { name: { type: "string" }, age: { type: "number" } },
+					properties: {
+						name: { type: "string" },
+						age: { type: "number" },
+					},
+					required: ["name", "age"],
 				},
 			},
+			required: ["user"],
 		});
 	});
 
@@ -327,7 +402,7 @@ describe("object", () => {
 
 	it("should include schema information in error", () => {
 		expect(object().unstable_validate(123).error).toMatchObject({
-			context: { schema: { type: "object", properties: {} } },
+			context: { schema: { type: "object", properties: {}, required: [] } },
 		});
 	});
 

@@ -12,14 +12,16 @@ Lightweight, zero-dependency library for validating arbitrary runtime data in Ty
   - [`boolean()`](#boolean)
   - [`url()`](#url)
   - [`constant()`](#constant)
+  - [`any()`](#any)
   - [`null_()`](#null_)
-  - [`undefined_()`](#undefined_)
   - [`iso8601()`](#iso8601)
   - [`array()`](#array)
   - [`object()`](#object)
+  - [`optional()`](#optional)
   - [`or()`](#or)
 - [Exported types](#exported-types)
   - [`InferOutputOf<D>`](#inferoutputofd)
+  - [`AnyValue`](#anyvalue)
   - [`Iso8601`](#iso8601-1)
 - [Acknowledgements](#acknowledgements)
 
@@ -45,6 +47,8 @@ validate(input, object({ id: number(), name: string() }));
 // `input` is now typed as { id: number; name: string }
 console.log(input.id, input.name);
 ```
+
+`valleys` models wire data: `undefined` is not a valid value. Object fields are required by default; use `optional(...)` only when a property may be absent. `null_()` remains valid because `null` is a real JSON value.
 
 Libraries like [Zod](https://zod.dev/), [Valibot](https://valibot.dev/), [Decoders](https://decoders.cc/), etc typically return a new (often transformed) value from `.parse()`. `valleys` instead asserts types directly - this provides several performance benefits as no time is spent copying arrays, strings or nested objects. This makes `valleys` ideal for performance-critical applications where memory efficiency and speed matter.
 
@@ -168,26 +172,39 @@ validate(input, constant(true));
 // input is typed as true
 ```
 
+#### `any()`
+
+Validates any value except `undefined`. This is the unconstrained value validator, similar in spirit to JSON Schema's always-valid schema (`true` or `{}`), except Valleys rejects `undefined` because it is not valid wire data.
+
+`any()` does not recursively check JSON compatibility. It only rejects `undefined` and otherwise applies no additional constraints. Its output type is `AnyValue` (`{} | null`), not TypeScript `any`.
+
+```ts
+import { any, object, optional, string, validate } from "valleys";
+
+const Event = object({
+  type: string(),
+  payload: any(),
+  metadata: optional(any()),
+});
+
+validate(input, Event);
+// input is typed as:
+// {
+//   type: string;
+//   payload: AnyValue;
+//   metadata?: AnyValue;
+// }
+```
+
 #### `null_()`
 
-Validates that a value is `null`.
+Validates that a value is JSON `null`.
 
 ```ts
 import { null_, validate } from "valleys";
 
 validate(input, null_());
 // input is typed as null
-```
-
-#### `undefined_()`
-
-Validates that a value is `undefined`.
-
-```ts
-import { undefined_, validate } from "valleys";
-
-validate(input, undefined_());
-// input is typed as undefined
 ```
 
 #### `iso8601()`
@@ -208,14 +225,18 @@ validate(input, iso8601());
 
 #### `array()`
 
-Validates arrays with optional item validation and rules.
+Validates arrays with optional item validation and rules. Arrays reject `undefined` items and sparse holes.
 
 ```ts
-import { array, string, number, validate } from "valleys";
+import { any, array, string, number, validate } from "valleys";
 
-// Array of any values
+// Array of any wire-data values
 validate(input, array());
-// input is typed as unknown[]
+// input is typed as AnyValue[]
+
+// Array of explicitly unconstrained values
+validate(input, array(any()));
+// input is typed as AnyValue[]
 
 // Array with minimum length
 validate(input, array({ minLength: 1 }));
@@ -235,18 +256,22 @@ validate(input, array(number(), { minLength: 3 }));
 
 #### `object()`
 
-Validates objects with optional property validation.
+Validates objects with optional property validation. Fields are required by default. Extra properties are allowed, but any present property with value `undefined` fails validation.
 
 ```ts
-import { object, string, number, boolean, validate } from "valleys";
+import { object, optional, string, number, boolean, validate } from "valleys";
 
 // Any object
 validate(input, object());
-// input is typed as Record<string, unknown>
+// input is typed as Record<string, AnyValue>
 
 // Object with specific shape
 validate(input, object({ id: number(), name: string(), active: boolean() }));
 // input is typed as { id: number; name: string; active: boolean }
+
+// Optional known field
+validate(input, object({ name: optional(string()) }));
+// input is typed as { name?: string }
 
 // Nested objects
 validate(
@@ -256,8 +281,72 @@ validate(
       id: number(),
       profile: object({ name: string(), age: number() }),
     }),
-  })
+  }),
 );
+```
+
+### Object property presence
+
+In Valleys, object fields are required by default:
+
+```ts
+object({
+  id: string(),
+  name: string(),
+});
+```
+
+Use `optional(...)` when a key may be absent:
+
+```ts
+object({
+  id: string(),
+  nickname: optional(string()),
+});
+```
+
+Although `optional(...)` wraps a validator syntactically, it is not a value validator. It marks the object key as optional. If the key is present, its value must pass the wrapped validator.
+
+`optional(...)` controls object-key presence, not the value type. For example, `optional(string())` infers `key?: string`, not `key?: string | undefined`.
+
+This means the key may be absent. If the key is present, the value must pass the wrapped validator. With `exactOptionalPropertyTypes`, `{ key?: T }` means the key may be absent, not that the value may be `undefined`. Since `undefined` is not valid wire data in Valleys, a present property with value `undefined` fails validation. Use `null_()` when JSON `null` is an allowed value.
+
+```ts
+const Event = object({
+  type: string(),
+  payload: any(),
+  metadata: optional(any()),
+});
+
+// This infers:
+// {
+//   type: string;
+//   payload: AnyValue;
+//   metadata?: AnyValue;
+// }
+```
+
+#### `optional()`
+
+Marks an object field as optional, meaning the property may be absent. It is an object-field modifier, not a value validator, so it cannot be used with `array(...)`, `or(...)`, or top-level `validate(...)`. It does not add `undefined` to the wrapped validator's output type.
+
+```ts
+import { null_, object, optional, or, string } from "valleys";
+
+const KnownOptional = object({
+  name: optional(string()),
+});
+// { name?: string }
+
+const Nullable = object({
+  name: or([string(), null_()]),
+});
+// { name: string | null }
+
+const OptionalNullable = object({
+  name: optional(or([string(), null_()])),
+});
+// { name?: string | null }
 ```
 
 #### `or()`
@@ -276,10 +365,7 @@ validate(input, or([string(), null_()]));
 // input is typed as string | null
 
 // Multiple types
-validate(
-  input,
-  or([constant("pending"), constant("active"), constant("completed")])
-);
+validate(input, or([constant("pending"), constant("active"), constant("completed")]));
 // input is typed as "pending" | "active" | "completed"
 ```
 
@@ -295,6 +381,18 @@ import { object, string, number, InferOutputOf } from "valleys";
 const userValidator = object({ id: number(), name: string() });
 type User = InferOutputOf<typeof userValidator>;
 // User is { id: number; name: string }
+```
+
+#### `AnyValue`
+
+Represents any value except `undefined` at the TypeScript level.
+
+`AnyValue = {} | null` means "anything except `undefined`" under strict null checks. It intentionally does not recursively prove JSON compatibility. It may include non-JSON JavaScript values if those values are passed directly to a validator; Valleys assumes inputs normally come from decoded wire data, while `any()` itself only rejects `undefined`.
+
+```ts
+import { AnyValue } from "valleys";
+
+type Payload = AnyValue; // {} | null
 ```
 
 #### `Iso8601String`

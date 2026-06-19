@@ -17,7 +17,7 @@
 	"scripts": {
 		"build": "bunchee",
 		"test": "vitest run",
-		"typecheck": "tsc --noEmit",
+		"typecheck": "vitest --typecheck.only",
 		"lint": "biome lint",
 		"format": "biome format --write",
 		"check": "biome check"

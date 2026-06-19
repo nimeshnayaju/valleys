@@ -1,7 +1,7 @@
 declare const brand: unique symbol;
 type Brand<T, TBrand extends string> = T & { [brand]: TBrand };
 
-type Validator<
+export type Validator<
 	Output,
 	Schema extends { type: string } = { type: string },
 	RuleSet extends Record<string, unknown> = Record<string, unknown>,
@@ -62,6 +62,67 @@ type Validator<
 export type InferOutputOf<D extends Validator<any, any, any>> =
 	D extends Validator<infer T, any, any> ? T : never;
 
+/**
+ * Represents an unconstrained value in Valleys' wire-data model.
+ *
+ * This type excludes `undefined`, because `undefined` is not valid wire data
+ * in Valleys. It is intentionally not a recursive JSON-value type.
+ *
+ * `AnyValue` may include non-JSON JavaScript values if such values are passed
+ * directly to the validator. Valleys assumes inputs normally come from decoded
+ * wire data, while `any()` itself only rejects `undefined`.
+ */
+export type AnyValue = {} | null;
+
+/* -------------------------------------------------------------------------------------------------
+ * any
+ * -----------------------------------------------------------------------------------------------*/
+
+/**
+ * Creates an unconstrained wire-data value validator.
+ *
+ * This is similar to JSON Schema's always-valid schema (`true` or `{}`), except
+ * that Valleys rejects `undefined` because `undefined` is not valid wire data.
+ *
+ * This validator does not recursively check JSON compatibility. It only rejects
+ * `undefined` and otherwise applies no additional constraints.
+ *
+ * In object schemas, `any()` means the key is required and its value is
+ * unconstrained. Use `optional(any())` when the key may be absent.
+ *
+ * @returns A validator for any non-undefined value
+ */
+export function any(): Validator<AnyValue, { type: "any" }, {}> {
+	const schema = { type: "any" } as const;
+	const rules = {};
+
+	return {
+		unstable_validate: (input: unknown) => {
+			if (input === undefined) {
+				return {
+					error: {
+						type: "schema-violation",
+						data: input,
+						context: {
+							schema: schema,
+							rules: rules,
+						},
+					},
+				};
+			}
+			return { value: input as AnyValue };
+		},
+		schema: schema,
+		rules: rules,
+	};
+}
+
+function isValidator(value: unknown): value is Validator<any, any, any> {
+	return (
+		typeof value === "object" && value !== null && "unstable_validate" in value
+	);
+}
+
 /* -------------------------------------------------------------------------------------------------
  * string
  * -----------------------------------------------------------------------------------------------*/
@@ -91,10 +152,13 @@ export function string(rules?: {
 	{ minLength?: number; maxLength?: number }
 > {
 	const schema = { type: "string" } as const;
-	rules = {
-		minLength: rules?.minLength,
-		maxLength: rules?.maxLength,
-	};
+	const normalizedRules: { minLength?: number; maxLength?: number } = {};
+	if (rules?.minLength !== undefined) {
+		normalizedRules.minLength = rules.minLength;
+	}
+	if (rules?.maxLength !== undefined) {
+		normalizedRules.maxLength = rules.maxLength;
+	}
 	return {
 		unstable_validate: (input: unknown) => {
 			if (typeof input !== "string") {
@@ -104,13 +168,13 @@ export function string(rules?: {
 						data: input,
 						context: {
 							schema: schema,
-							rules: rules,
+							rules: normalizedRules,
 						},
 					},
 				};
 			}
 
-			const minLength = rules?.minLength;
+			const minLength = normalizedRules.minLength;
 			if (minLength !== undefined && input.length < minLength) {
 				return {
 					error: {
@@ -119,13 +183,13 @@ export function string(rules?: {
 						data: input,
 						context: {
 							schema: schema,
-							rules: rules,
+							rules: normalizedRules,
 						},
 					},
 				};
 			}
 
-			const maxLength = rules?.maxLength;
+			const maxLength = normalizedRules.maxLength;
 			if (maxLength !== undefined && input.length > maxLength) {
 				return {
 					error: {
@@ -134,7 +198,7 @@ export function string(rules?: {
 						data: input,
 						context: {
 							schema: schema,
-							rules: rules,
+							rules: normalizedRules,
 						},
 					},
 				};
@@ -143,7 +207,7 @@ export function string(rules?: {
 			return { value: input };
 		},
 		schema: schema,
-		rules: rules,
+		rules: normalizedRules,
 	};
 }
 
@@ -168,10 +232,13 @@ export function number(rules?: {
 	max?: number;
 }): Validator<number, { type: "number" }, { min?: number; max?: number }> {
 	const schema = { type: "number" } as const;
-	rules = {
-		min: rules?.min,
-		max: rules?.max,
-	};
+	const normalizedRules: { min?: number; max?: number } = {};
+	if (rules?.min !== undefined) {
+		normalizedRules.min = rules.min;
+	}
+	if (rules?.max !== undefined) {
+		normalizedRules.max = rules.max;
+	}
 	return {
 		unstable_validate: (input: unknown) => {
 			if (typeof input !== "number" || !Number.isFinite(input)) {
@@ -181,13 +248,13 @@ export function number(rules?: {
 						data: input,
 						context: {
 							schema: schema,
-							rules: rules,
+							rules: normalizedRules,
 						},
 					},
 				};
 			}
 
-			const min = rules?.min;
+			const min = normalizedRules.min;
 			if (min !== undefined && input < min) {
 				return {
 					error: {
@@ -196,13 +263,13 @@ export function number(rules?: {
 						data: input,
 						context: {
 							schema: schema,
-							rules: rules,
+							rules: normalizedRules,
 						},
 					},
 				};
 			}
 
-			const max = rules?.max;
+			const max = normalizedRules.max;
 			if (max !== undefined && input > max) {
 				return {
 					error: {
@@ -211,7 +278,7 @@ export function number(rules?: {
 						data: input,
 						context: {
 							schema: schema,
-							rules: rules,
+							rules: normalizedRules,
 						},
 					},
 				};
@@ -220,7 +287,7 @@ export function number(rules?: {
 			return { value: input };
 		},
 		schema: schema,
-		rules: rules,
+		rules: normalizedRules,
 	};
 }
 
@@ -304,9 +371,9 @@ export function url(): Validator<UrlString, { type: "url" }, {}> {
  * @param value - The literal value to match against
  * @returns A validator for the specified constant value
  */
-export function constant<
-	T extends string | number | boolean | symbol | undefined | null,
->(value: T): Validator<T, { type: "constant"; value: string }, {}> {
+export function constant<T extends string | number | boolean | symbol | null>(
+	value: T,
+): Validator<T, { type: "constant"; value: string }, {}> {
 	const schema = { type: "constant", value: String(value) } as const;
 	const rules = {};
 
@@ -336,7 +403,10 @@ export function constant<
  * -----------------------------------------------------------------------------------------------*/
 
 /**
- * Creates a validator that validates array values.
+ * Creates a validator that validates dense array values.
+ *
+ * Arrays cannot contain sparse holes or `undefined` items. When an item
+ * validator is provided, every item must also pass that validator.
  *
  * @param validator - Optional validator for array items
  * @param rules - Optional validation rules
@@ -344,9 +414,9 @@ export function constant<
  */
 export function array(rules: {
 	minLength?: number;
-}): Validator<Array<unknown>, { type: "array" }, { minLength?: number }>;
+}): Validator<Array<AnyValue>, { type: "array" }, { minLength?: number }>;
 export function array(): Validator<
-	Array<unknown>,
+	Array<AnyValue>,
 	{ type: "array" },
 	{ minLength?: number }
 >;
@@ -360,24 +430,25 @@ export function array<D extends Validator<any, any, any>>(
 >;
 export function array<D extends Validator<any, any, any>>(
 	validatorOrRules?: D | { minLength?: number },
-	rules?: { minLength?: number },
+	arrayRules?: { minLength?: number },
 ): Validator<
 	Array<InferOutputOf<D>>,
 	{ type: "array"; item?: D["schema"] },
 	{ minLength?: number }
 > {
 	let validator: D | undefined;
-	if (
-		typeof validatorOrRules === "object" &&
-		"unstable_validate" in validatorOrRules
-	) {
-		validator = validatorOrRules;
-		rules = { minLength: rules?.minLength };
-	} else {
-		rules = { minLength: validatorOrRules?.minLength };
+	const normalizedRules: { minLength?: number } = {};
+	if (isValidator(validatorOrRules)) {
+		validator = validatorOrRules as D;
+		if (arrayRules?.minLength !== undefined) {
+			normalizedRules.minLength = arrayRules.minLength;
+		}
+	} else if (validatorOrRules?.minLength !== undefined) {
+		normalizedRules.minLength = validatorOrRules.minLength;
 	}
 	const schema = { type: "array", item: validator?.schema } as const;
-	rules = { minLength: rules?.minLength };
+	const fallbackValidator = any();
+	const itemValidator = validator ?? fallbackValidator;
 
 	return {
 		unstable_validate: (input: unknown) => {
@@ -388,13 +459,13 @@ export function array<D extends Validator<any, any, any>>(
 						data: input,
 						context: {
 							schema: schema,
-							rules: rules,
+							rules: normalizedRules,
 						},
 					},
 				};
 			}
 
-			const minLength = rules?.minLength;
+			const minLength = normalizedRules.minLength;
 			if (minLength !== undefined && input.length < minLength) {
 				return {
 					error: {
@@ -403,18 +474,35 @@ export function array<D extends Validator<any, any, any>>(
 						data: input,
 						context: {
 							schema: schema,
-							rules: rules,
+							rules: normalizedRules,
 						},
 					},
 				};
 			}
 
-			if (validator === undefined) {
-				return { value: input as Array<InferOutputOf<D>> };
-			}
-
 			for (let i = 0; i < input.length; i++) {
-				const result = validator.unstable_validate(input[i]);
+				if (!Object.hasOwn(input, i)) {
+					return {
+						error: {
+							type: "array-index",
+							data: input,
+							entry: {
+								index: i,
+								node: {
+									type: "schema-violation",
+									data: undefined,
+									context: {
+										schema: itemValidator.schema,
+										rules: itemValidator.rules,
+									},
+								},
+							},
+						},
+					};
+				}
+
+				const item = input[i];
+				const result = itemValidator.unstable_validate(item);
 				if (result.error !== undefined) {
 					return {
 						error: {
@@ -428,64 +516,150 @@ export function array<D extends Validator<any, any, any>>(
 			return { value: input as Array<InferOutputOf<D>> };
 		},
 		schema: schema,
-		rules: rules,
+		rules: normalizedRules,
 	};
 }
 
 /* -------------------------------------------------------------------------------------------------
  * object
  * -----------------------------------------------------------------------------------------------*/
-type OptionalKeys<T extends Record<string, Validator<any, any, any>>> = {
-	[K in keyof T]: undefined extends InferOutputOf<T[K]> ? K : never;
+const optionalBrand: unique symbol = Symbol("valleys.optional");
+
+export type OptionalField<D extends Validator<any, any, any>> = {
+	readonly [optionalBrand]: true;
+	readonly inner: D;
+};
+
+type ObjectField =
+	| Validator<any, any, any>
+	| OptionalField<Validator<any, any, any>>;
+
+/**
+ * Marks an object property as optional.
+ *
+ * This is not a value validator and can only be used inside `object({...})`.
+ * It means the object key may be absent. If the key is present, its value
+ * must pass the wrapped validator.
+ *
+ * `optional(string())` does not mean `string | undefined`, and it does not add
+ * `undefined` to the value type. With `exactOptionalPropertyTypes`,
+ * `{ key?: T }` means the key may be absent, not that the present value may be
+ * `undefined`. `undefined` is not valid wire data in Valleys. Use `null_()`
+ * when JSON `null` is an allowed value.
+ *
+ * @example
+ * ```ts
+ * const User = object({
+ *   id: string(),
+ *   nickname: optional(string()),
+ * });
+ *
+ * // Valid:
+ * // { id: "1" }
+ * // { id: "1", nickname: "Nick" }
+ *
+ * // Invalid:
+ * // { id: "1", nickname: undefined }
+ * ```
+ *
+ * @param inner - The validator to use when the property is present
+ * @returns An object-field modifier accepted by object()
+ */
+export function optional<D extends Validator<any, any, any>>(
+	inner: D,
+): OptionalField<D> {
+	return { [optionalBrand]: true, inner };
+}
+
+function isOptionalField(
+	field: ObjectField,
+): field is OptionalField<Validator<any, any, any>> {
+	return optionalBrand in field;
+}
+
+type FieldValidator<T extends ObjectField> =
+	T extends OptionalField<infer D> ? D : T;
+
+type InferFieldOutput<F> =
+	F extends OptionalField<infer D>
+		? InferOutputOf<D>
+		: F extends Validator<any, any, any>
+			? InferOutputOf<F>
+			: never;
+
+type OptionalObjectKeys<T extends Record<string, ObjectField>> = {
+	[K in keyof T]: T[K] extends OptionalField<Validator<any, any, any>>
+		? K
+		: never;
 }[keyof T];
 
-type RequiredKeys<T extends Record<string, Validator<any, any, any>>> = Exclude<
+type RequiredObjectKeys<T extends Record<string, ObjectField>> = Exclude<
 	keyof T,
-	OptionalKeys<T>
+	OptionalObjectKeys<T>
 >;
 
 type Merge<T> = T extends (...args: readonly unknown[]) => unknown
 	? T
 	: { [K in keyof T]: T[K] };
 
-type ObjectValidatorType<T extends Record<string, Validator<any, any, any>>> =
-	Merge<
-		{ [K in RequiredKeys<T>]: InferOutputOf<T[K]> } & {
-			[K in OptionalKeys<T>]?: InferOutputOf<T[K]>;
-		}
-	>;
+type ObjectValidatorType<T extends Record<string, ObjectField>> = Merge<
+	{ [K in RequiredObjectKeys<T>]: InferFieldOutput<T[K]> } & {
+		[K in OptionalObjectKeys<T>]?: InferFieldOutput<T[K]>;
+	}
+>;
+
+type ObjectSchema<T extends Record<string, ObjectField>> = {
+	type: "object";
+	properties: { [K in keyof T]: FieldValidator<T[K]>["schema"] };
+	required: Array<Extract<RequiredObjectKeys<T>, string>>;
+};
 
 /**
  * Creates a validator that validates object values.
+ *
+ * Object fields are required by default. Wrap a field with `optional(...)`
+ * when the property may be absent. `optional(...)` only marks key presence;
+ * it does not add `undefined` to the value type or allow `undefined` as a
+ * value. Any present object property with value `undefined` fails validation.
  *
  * @param validators - Optional object mapping property names to their validators
  * @returns A validator for object values
  */
 export function object(): Validator<
-	Record<string, unknown>,
-	{ type: "object"; properties: Record<string, { type: string }> }
+	Record<string, AnyValue>,
+	{
+		type: "object";
+		properties: Record<string, { type: string }>;
+		required: string[];
+	}
 >;
-export function object<T extends Record<string, Validator<any, any, any>>>(
+export function object<T extends Record<string, ObjectField>>(
 	fields: T,
-): Validator<
-	ObjectValidatorType<T>,
-	{ type: "object"; properties: { [K in keyof T]: T[K]["schema"] } }
-> & {
+): Validator<ObjectValidatorType<T>, ObjectSchema<T>> & {
 	fields: T;
 };
-export function object<T extends Record<string, Validator<any, any, any>>>(
+export function object<T extends Record<string, ObjectField>>(
 	fields?: T,
 ): Validator<
 	ObjectValidatorType<T>,
-	{ type: "object"; properties: Record<string, { type: string }> }
+	{
+		type: "object";
+		properties: Record<string, { type: string }>;
+		required: string[];
+	}
 > & {
 	fields?: T;
 } {
 	const properties = fields ? Object.keys(fields) : [];
-	const _validators = fields
-		? properties.map((k) => fields[k] as Validator<unknown>)
-		: [];
+	const _fields = fields ? properties.map((k) => fields[k] as ObjectField) : [];
+	const _validators = _fields.map((field) =>
+		isOptionalField(field) ? field.inner : field,
+	);
+	const required = properties.filter(
+		(_property, index) => !isOptionalField(_fields[index] as ObjectField),
+	);
 	const numOfProperties = properties.length;
+	const fallbackValidator = any();
 
 	const schema = {
 		type: "object",
@@ -495,6 +669,7 @@ export function object<T extends Record<string, Validator<any, any, any>>>(
 				(_validators[index] as Validator<unknown>).schema,
 			]),
 		),
+		required: required,
 	} as const;
 	const rules = {};
 
@@ -514,13 +689,41 @@ export function object<T extends Record<string, Validator<any, any, any>>>(
 			}
 
 			if (numOfProperties === 0) {
+				for (const property of Object.keys(input)) {
+					if ((input as Record<string, unknown>)[property] === undefined) {
+						return {
+							error: {
+								type: "object-property",
+								data: input as Record<string, unknown>,
+								entry: {
+									property,
+									node: {
+										type: "schema-violation",
+										data: undefined,
+										context: {
+											schema: fallbackValidator.schema,
+											rules: fallbackValidator.rules,
+										},
+									},
+								},
+							},
+						};
+					}
+				}
 				return { value: input as ObjectValidatorType<T> };
 			}
 
 			for (let i = 0; i < numOfProperties; i++) {
 				const property = properties[i] as string;
 				const validator = _validators[i] as Validator<unknown>;
-				const res = validator.unstable_validate((input as any)[property]);
+				const isOptional = isOptionalField(_fields[i] as ObjectField);
+				if (!Object.hasOwn(input, property) && isOptional) {
+					continue;
+				}
+
+				const res = validator.unstable_validate(
+					(input as Record<string, unknown>)[property],
+				);
 				if (res.error !== undefined) {
 					return {
 						error: {
@@ -531,11 +734,32 @@ export function object<T extends Record<string, Validator<any, any, any>>>(
 					};
 				}
 			}
+			for (const property of Object.keys(input)) {
+				if ((input as Record<string, unknown>)[property] === undefined) {
+					return {
+						error: {
+							type: "object-property",
+							data: input as Record<string, unknown>,
+							entry: {
+								property,
+								node: {
+									type: "schema-violation",
+									data: undefined,
+									context: {
+										schema: fallbackValidator.schema,
+										rules: fallbackValidator.rules,
+									},
+								},
+							},
+						},
+					};
+				}
+			}
 			return { value: input as ObjectValidatorType<T> };
 		},
 		schema: schema,
 		rules: rules,
-		fields: fields,
+		...(fields === undefined ? {} : { fields: fields }),
 	};
 }
 
@@ -598,7 +822,11 @@ export function iso8601(): Validator<Iso8601String, { type: "iso8601" }> {
  * -----------------------------------------------------------------------------------------------*/
 
 /**
- * Creates a validator that validates values matching any of the provided validators. Tries each validator in order and returns the first successful result.
+ * Creates a value-union validator.
+ *
+ * Tries each validator in order and returns the first successful result.
+ * This models unions of values, not object property absence. Use
+ * `optional(...)` inside `object({...})` when a property key may be absent.
  *
  * @param validators - Array of validators to try in order
  * @returns A validator that accepts values matching any of the provided validators
@@ -647,7 +875,9 @@ export function or<D extends readonly Validator<any, any, any>[]>(
  * -----------------------------------------------------------------------------------------------*/
 
 /**
- * Creates a validator that validates null values. Only accepts the literal null value.
+ * Creates a validator that validates JSON null values.
+ *
+ * Only accepts the literal `null` value.
  *
  * @returns A validator for null values
  */
@@ -670,40 +900,6 @@ export function null_(): Validator<null, { type: "null" }, {}> {
 				};
 			}
 			return { value: input as null };
-		},
-		schema: schema,
-		rules: rules,
-	};
-}
-
-/* -------------------------------------------------------------------------------------------------
- * undefined_
- * -----------------------------------------------------------------------------------------------*/
-
-/**
- * Creates a validator that validates undefined values. Only accepts the literal undefined value.
- *
- * @returns A validator for undefined values
- */
-export function undefined_(): Validator<undefined, { type: "undefined" }, {}> {
-	const schema = { type: "undefined" } as const;
-	const rules = {};
-
-	return {
-		unstable_validate: (input: unknown) => {
-			if (input !== undefined) {
-				return {
-					error: {
-						type: "schema-violation",
-						data: input,
-						context: {
-							schema: schema,
-							rules: rules,
-						},
-					},
-				};
-			}
-			return { value: input as undefined };
 		},
 		schema: schema,
 		rules: rules,

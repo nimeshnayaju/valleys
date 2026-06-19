@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	any,
 	array,
 	boolean,
 	constant,
@@ -7,8 +8,8 @@ import {
 	null_,
 	number,
 	object,
+	or,
 	string,
-	undefined_,
 } from "../index";
 
 describe("array", () => {
@@ -31,15 +32,9 @@ describe("array", () => {
 			expect(result4.value).toEqual([true, false]);
 			expect(result4.error).toBeUndefined();
 
-			// Mixed types
-			const result5 = validator.unstable_validate([
-				1,
-				"hello",
-				true,
-				null,
-				undefined,
-			]);
-			expect(result5.value).toEqual([1, "hello", true, null, undefined]);
+			// Mixed wire-data values
+			const result5 = validator.unstable_validate([1, "hello", true, null]);
+			expect(result5.value).toEqual([1, "hello", true, null]);
 			expect(result5.error).toBeUndefined();
 
 			// Nested arrays
@@ -155,9 +150,9 @@ describe("array", () => {
 				type: "array",
 				item: { type: "null" },
 			});
-			expect(array(undefined_()).schema).toEqual({
+			expect(array(any()).schema).toEqual({
 				type: "array",
-				item: { type: "undefined" },
+				item: { type: "any" },
 			});
 			expect(array(constant(1)).schema).toEqual({
 				type: "array",
@@ -173,7 +168,7 @@ describe("array", () => {
 			});
 			expect(array(object()).schema).toEqual({
 				type: "array",
-				item: { type: "object", properties: {} },
+				item: { type: "object", properties: {}, required: [] },
 			});
 		});
 
@@ -264,13 +259,8 @@ describe("array", () => {
 				expect(result2.value).toEqual(["a", "b", "c", "d"]);
 				expect(result2.error).toBeUndefined();
 
-				const result3 = validator.unstable_validate([
-					true,
-					false,
-					null,
-					undefined,
-				]);
-				expect(result3.value).toEqual([true, false, null, undefined]);
+				const result3 = validator.unstable_validate([true, false, null]);
+				expect(result3.value).toEqual([true, false, null]);
 				expect(result3.error).toBeUndefined();
 
 				const result4 = validator.unstable_validate([{}, [], 42, "mixed"]);
@@ -312,6 +302,50 @@ describe("array", () => {
 					data: input,
 				});
 			});
+		});
+	});
+
+	describe("wire-data semantics", () => {
+		it("should accept any non-undefined item with any()", () => {
+			const result = array(any()).unstable_validate([
+				null,
+				"x",
+				1,
+				false,
+				{},
+				[],
+			]);
+			expect(result.value).toEqual([null, "x", 1, false, {}, []]);
+			expect(result.error).toBeUndefined();
+		});
+
+		it("should reject undefined items", () => {
+			const result = array(any()).unstable_validate([undefined]);
+			expect(result.value).toBeUndefined();
+			expect(result.error).toMatchObject({
+				type: "array-index",
+				entry: { index: 0, node: { type: "schema-violation" } },
+			});
+		});
+
+		it("should reject sparse arrays", () => {
+			const input = new Array(2);
+			input[1] = "x";
+			const result = array(any()).unstable_validate(input);
+			expect(result.value).toBeUndefined();
+			expect(result.error).toMatchObject({
+				type: "array-index",
+				entry: { index: 0, node: { type: "schema-violation" } },
+			});
+		});
+
+		it("should accept nullable string items", () => {
+			const result = array(or([string(), null_()])).unstable_validate([
+				"a",
+				null,
+			]);
+			expect(result.value).toEqual(["a", null]);
+			expect(result.error).toBeUndefined();
 		});
 	});
 });
