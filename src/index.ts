@@ -118,9 +118,28 @@ export function any(): Validator<AnyValue, { type: "any" }, {}> {
 }
 
 function isValidator(value: unknown): value is Validator<any, any, any> {
+	if (typeof value !== "object" || value === null) {
+		return false;
+	}
+
+	const candidate = value as Partial<Validator<any, any, any>>;
 	return (
-		typeof value === "object" && value !== null && "unstable_validate" in value
+		typeof candidate.unstable_validate === "function" &&
+		typeof candidate.schema === "object" &&
+		candidate.schema !== null &&
+		typeof candidate.schema.type === "string" &&
+		typeof candidate.rules === "object" &&
+		candidate.rules !== null
 	);
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	if (typeof value !== "object" || value === null) {
+		return false;
+	}
+
+	const prototype = Object.getPrototypeOf(value);
+	return prototype === Object.prototype || prototype === null;
 }
 
 /* -------------------------------------------------------------------------------------------------
@@ -614,16 +633,26 @@ type ObjectSchema<T extends Record<string, ObjectField>> = {
 	required: Array<Extract<RequiredObjectKeys<T>, string>>;
 };
 
+type ObjectValuesSchema<D extends Validator<any, any, any>> = {
+	type: "object";
+	properties: Record<string, never>;
+	required: [];
+	additionalProperties: D["schema"];
+};
+
 /**
- * Creates a validator that validates object values.
+ * Creates a validator that validates plain object values.
  *
  * Object fields are required by default. Wrap a field with `optional(...)`
  * when the property may be absent. `optional(...)` only marks key presence;
  * it does not add `undefined` to the value type or allow `undefined` as a
  * value. Any present object property with value `undefined` fails validation.
  *
- * @param validators - Optional object mapping property names to their validators
- * @returns A validator for object values
+ * Pass a validator instead of a field map to validate every property value as
+ * a homogeneous record.
+ *
+ * @param fieldsOrValues - Optional field map or validator for every property value
+ * @returns A validator for plain object values
  */
 export function object(): Validator<
 	Record<string, AnyValue>,
@@ -633,23 +662,24 @@ export function object(): Validator<
 		required: string[];
 	}
 >;
+export function object<D extends Validator<any, any, any>>(
+	values: D,
+): Validator<Record<string, InferOutputOf<D>>, ObjectValuesSchema<D>>;
 export function object<T extends Record<string, ObjectField>>(
 	fields: T,
 ): Validator<ObjectValidatorType<T>, ObjectSchema<T>> & {
 	fields: T;
 };
-export function object<T extends Record<string, ObjectField>>(
-	fields?: T,
-): Validator<
-	ObjectValidatorType<T>,
-	{
-		type: "object";
-		properties: Record<string, { type: string }>;
-		required: string[];
-	}
-> & {
-	fields?: T;
+export function object(
+	fieldsOrValues?: Record<string, ObjectField> | Validator<any, any, any>,
+): Validator<any, any, {}> & {
+	fields?: Record<string, ObjectField>;
 } {
+	const values = isValidator(fieldsOrValues) ? fieldsOrValues : undefined;
+	const fields =
+		values === undefined
+			? (fieldsOrValues as Record<string, ObjectField> | undefined)
+			: undefined;
 	const properties = fields ? Object.keys(fields) : [];
 	const _fields = fields ? properties.map((k) => fields[k] as ObjectField) : [];
 	const _validators = _fields.map((field) =>
@@ -661,21 +691,29 @@ export function object<T extends Record<string, ObjectField>>(
 	const numOfProperties = properties.length;
 	const fallbackValidator = any();
 
-	const schema = {
-		type: "object",
-		properties: Object.fromEntries(
-			properties.map((property, index) => [
-				property,
-				(_validators[index] as Validator<unknown>).schema,
-			]),
-		),
-		required: required,
-	} as const;
+	const schema =
+		values === undefined
+			? ({
+					type: "object",
+					properties: Object.fromEntries(
+						properties.map((property, index) => [
+							property,
+							(_validators[index] as Validator<unknown>).schema,
+						]),
+					),
+					required: required,
+				} as const)
+			: ({
+					type: "object",
+					properties: {},
+					required: [],
+					additionalProperties: values.schema,
+				} as const);
 	const rules = {};
 
 	return {
 		unstable_validate: (input: unknown) => {
-			if (typeof input !== "object" || input === null || Array.isArray(input)) {
+			if (!isPlainObject(input)) {
 				return {
 					error: {
 						type: "schema-violation",
@@ -688,13 +726,31 @@ export function object<T extends Record<string, ObjectField>>(
 				};
 			}
 
-			if (numOfProperties === 0) {
+			if (values !== undefined) {
 				for (const property of Object.keys(input)) {
-					if ((input as Record<string, unknown>)[property] === undefined) {
+					const result = values.unstable_validate(input[property]);
+					if (result.error !== undefined) {
 						return {
 							error: {
 								type: "object-property",
-								data: input as Record<string, unknown>,
+								data: input,
+								entry: { property, node: result.error },
+							},
+						};
+					}
+				}
+				return {
+					value: input,
+				};
+			}
+
+			if (numOfProperties === 0) {
+				for (const property of Object.keys(input)) {
+					if (input[property] === undefined) {
+						return {
+							error: {
+								type: "object-property",
+								data: input,
 								entry: {
 									property,
 									node: {
@@ -710,7 +766,7 @@ export function object<T extends Record<string, ObjectField>>(
 						};
 					}
 				}
-				return { value: input as ObjectValidatorType<T> };
+				return { value: input };
 			}
 
 			for (let i = 0; i < numOfProperties; i++) {
@@ -721,25 +777,23 @@ export function object<T extends Record<string, ObjectField>>(
 					continue;
 				}
 
-				const res = validator.unstable_validate(
-					(input as Record<string, unknown>)[property],
-				);
+				const res = validator.unstable_validate(input[property]);
 				if (res.error !== undefined) {
 					return {
 						error: {
 							type: "object-property",
-							data: input as Record<string, unknown>,
+							data: input,
 							entry: { property, node: res.error },
 						},
 					};
 				}
 			}
 			for (const property of Object.keys(input)) {
-				if ((input as Record<string, unknown>)[property] === undefined) {
+				if (input[property] === undefined) {
 					return {
 						error: {
 							type: "object-property",
-							data: input as Record<string, unknown>,
+							data: input,
 							entry: {
 								property,
 								node: {
@@ -755,7 +809,7 @@ export function object<T extends Record<string, ObjectField>>(
 					};
 				}
 			}
-			return { value: input as ObjectValidatorType<T> };
+			return { value: input };
 		},
 		schema: schema,
 		rules: rules,

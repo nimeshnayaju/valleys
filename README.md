@@ -256,7 +256,7 @@ validate(input, array(number(), { minLength: 3 }));
 
 #### `object()`
 
-Validates objects with optional property validation. Fields are required by default. Extra properties are allowed, but any present property with value `undefined` fails validation.
+Validates plain objects and null-prototype dictionaries. Fields are required by default. Extra properties are allowed, but any present property with value `undefined` fails validation. Arrays, class instances, and built-in objects such as `Date`, `Map`, and `Set` are rejected.
 
 ```ts
 import { object, optional, string, number, boolean, validate } from "valleys";
@@ -264,6 +264,10 @@ import { object, optional, string, number, boolean, validate } from "valleys";
 // Any object
 validate(input, object());
 // input is typed as Record<string, AnyValue>
+
+// String-valued record
+validate(input, object(string()));
+// input is typed as Record<string, string>
 
 // Object with specific shape
 validate(input, object({ id: number(), name: string(), active: boolean() }));

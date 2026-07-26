@@ -68,6 +68,48 @@ describe("object", () => {
 		expect(result2.error).toBeUndefined();
 	});
 
+	it("should validate every property value when given a value validator", () => {
+		const validator = object(string());
+
+		const emptyResult = validator.unstable_validate({});
+		expect(emptyResult.value).toEqual({});
+		expect(emptyResult.error).toBeUndefined();
+
+		const validInput = { first: "one", second: "two" };
+		const validResult = validator.unstable_validate(validInput);
+		expect(validResult.value).toBe(validInput);
+		expect(validResult.error).toBeUndefined();
+
+		const invalidInput = { first: "one", second: 2 };
+		const invalidResult = validator.unstable_validate(invalidInput);
+		expect(invalidResult.value).toBeUndefined();
+		expect(invalidResult.error).toMatchObject({
+			type: "object-property",
+			data: invalidInput,
+			entry: {
+				property: "second",
+				node: { type: "schema-violation", data: 2 },
+			},
+		});
+	});
+
+	it("should distinguish a validator from a field named unstable_validate", () => {
+		const validator = object({
+			unstable_validate: string(),
+			schema: string(),
+			rules: string(),
+		});
+		const input = {
+			unstable_validate: "value",
+			schema: "value",
+			rules: "value",
+		};
+
+		const result = validator.unstable_validate(input);
+		expect(result.value).toBe(input);
+		expect(result.error).toBeUndefined();
+	});
+
 	it("should work with nested object validators", () => {
 		const validator = object({
 			user: object({
@@ -306,23 +348,45 @@ describe("object", () => {
 		expect(result3.error).toBeDefined();
 	});
 
-	it("should accept non-plain objects", () => {
+	it("should reject non-plain objects", () => {
 		const validator = object();
 		const result1 = validator.unstable_validate(new Date());
-		expect(result1.value).toBeDefined();
-		expect(result1.error).toBeUndefined();
+		expect(result1.value).toBeUndefined();
+		expect(result1.error).toBeDefined();
 
 		const result2 = validator.unstable_validate(/regex/);
-		expect(result2.value).toBeDefined();
-		expect(result2.error).toBeUndefined();
+		expect(result2.value).toBeUndefined();
+		expect(result2.error).toBeDefined();
 
 		const result3 = validator.unstable_validate(new Map());
-		expect(result3.value).toBeDefined();
-		expect(result3.error).toBeUndefined();
+		expect(result3.value).toBeUndefined();
+		expect(result3.error).toBeDefined();
 
 		const result4 = validator.unstable_validate(new Set());
-		expect(result4.value).toBeDefined();
-		expect(result4.error).toBeUndefined();
+		expect(result4.value).toBeUndefined();
+		expect(result4.error).toBeDefined();
+
+		class Example {}
+		const result5 = validator.unstable_validate(new Example());
+		expect(result5.value).toBeUndefined();
+		expect(result5.error).toBeDefined();
+	});
+
+	it("should accept null-prototype objects", () => {
+		const input = Object.assign(
+			Object.create(null) as Record<string, unknown>,
+			{
+				name: "Test",
+			},
+		);
+
+		const result1 = object().unstable_validate(input);
+		expect(result1.value).toBe(input);
+		expect(result1.error).toBeUndefined();
+
+		const result2 = object(string()).unstable_validate(input);
+		expect(result2.value).toBe(input);
+		expect(result2.error).toBeUndefined();
 	});
 
 	it("should return the original value", () => {
@@ -337,6 +401,13 @@ describe("object", () => {
 			type: "object",
 			properties: {},
 			required: [],
+		});
+
+		expect(object(string()).schema).toEqual({
+			type: "object",
+			properties: {},
+			required: [],
+			additionalProperties: { type: "string" },
 		});
 
 		// Object with properties
@@ -396,6 +467,7 @@ describe("object", () => {
 
 	it("should include rules", () => {
 		expect(object().rules).toEqual({});
+		expect(object(string()).rules).toEqual({});
 		expect(object({ name: string() }).rules).toEqual({});
 		expect(object({ name: string(), age: number() }).rules).toEqual({});
 	});

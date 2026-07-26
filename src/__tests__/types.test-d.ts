@@ -26,6 +26,27 @@ expectTypeOf<
 	InferOutputOf<typeof unconstrainedObjectValidator>
 >().toEqualTypeOf<Record<string, AnyValue>>();
 
+const stringRecordValidator = object(string());
+expectTypeOf<InferOutputOf<typeof stringRecordValidator>>().toEqualTypeOf<
+	Record<string, string>
+>();
+
+const anyRecordValidator = object(any());
+expectTypeOf<InferOutputOf<typeof anyRecordValidator>>().toEqualTypeOf<
+	Record<string, AnyValue>
+>();
+
+const validatorNamedFields = object({
+	unstable_validate: string(),
+	schema: string(),
+	rules: string(),
+});
+expectTypeOf<InferOutputOf<typeof validatorNamedFields>>().toEqualTypeOf<{
+	unstable_validate: string;
+	schema: string;
+	rules: string;
+}>();
+
 const User = object({
 	id: string(),
 	nickname: optional(string()),
