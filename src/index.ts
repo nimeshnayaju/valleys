@@ -311,6 +311,90 @@ export function number(rules?: {
 }
 
 /* -------------------------------------------------------------------------------------------------
+ * integer
+ * -----------------------------------------------------------------------------------------------*/
+
+/**
+ * Creates a validator that validates integer values.
+ *
+ * This follows JSON Schema's `integer` type semantics: any finite number with
+ * a zero fractional part is accepted.
+ *
+ * @param rules.min - Minimum allowed value (inclusive)
+ * @param rules.max - Maximum allowed value (inclusive)
+ * @returns A validator for integer values
+ */
+export function integer(): Validator<number, { type: "integer" }>;
+export function integer(rules?: {
+	min?: number;
+	max?: number;
+}): Validator<number, { type: "integer" }, { min?: number; max?: number }>;
+export function integer(rules?: {
+	min?: number;
+	max?: number;
+}): Validator<number, { type: "integer" }, { min?: number; max?: number }> {
+	const schema = { type: "integer" } as const;
+	const normalizedRules: { min?: number; max?: number } = {};
+	if (rules?.min !== undefined) {
+		normalizedRules.min = rules.min;
+	}
+	if (rules?.max !== undefined) {
+		normalizedRules.max = rules.max;
+	}
+	return {
+		unstable_validate: (input: unknown) => {
+			if (!Number.isInteger(input)) {
+				return {
+					error: {
+						type: "schema-violation",
+						data: input,
+						context: {
+							schema: schema,
+							rules: normalizedRules,
+						},
+					},
+				};
+			}
+
+			const value = input as number;
+			const min = normalizedRules.min;
+			if (min !== undefined && value < min) {
+				return {
+					error: {
+						type: "rule-violation",
+						rule: "min",
+						data: value,
+						context: {
+							schema: schema,
+							rules: normalizedRules,
+						},
+					},
+				};
+			}
+
+			const max = normalizedRules.max;
+			if (max !== undefined && value > max) {
+				return {
+					error: {
+						type: "rule-violation",
+						rule: "max",
+						data: value,
+						context: {
+							schema: schema,
+							rules: normalizedRules,
+						},
+					},
+				};
+			}
+
+			return { value };
+		},
+		schema: schema,
+		rules: normalizedRules,
+	};
+}
+
+/* -------------------------------------------------------------------------------------------------
  * boolean
  * -----------------------------------------------------------------------------------------------*/
 

@@ -9,6 +9,7 @@ Lightweight, zero-dependency library for validating arbitrary runtime data in Ty
 - [API Reference](#api-reference)
   - [`string()`](#string)
   - [`number()`](#number)
+  - [`integer()`](#integer)
   - [`boolean()`](#boolean)
   - [`url()`](#url)
   - [`constant()`](#constant)
@@ -123,6 +124,27 @@ validate(input, number());
 
 // With rules
 validate(input, number({ min: 0, max: 100 }));
+```
+
+**Rules:**
+
+- `min?: number` - Minimum value (inclusive)
+- `max?: number` - Maximum value (inclusive)
+
+#### `integer()`
+
+Validates that a value is an integer, following JSON Schema's `integer` type
+semantics.
+
+```ts
+import { integer, validate } from "valleys";
+
+// Basic usage
+validate(input, integer());
+// input is typed as number
+
+// With rules
+validate(input, integer({ min: 0, max: 100 }));
 ```
 
 **Rules:**

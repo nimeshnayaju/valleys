@@ -4,12 +4,16 @@ import {
 	any,
 	array,
 	type InferOutputOf,
+	integer,
 	object,
 	optional,
 	or,
 	string,
 	validate,
 } from "../index";
+
+const integerValidator = integer();
+expectTypeOf<InferOutputOf<typeof integerValidator>>().toEqualTypeOf<number>();
 
 const requiredPayloadValidator = object({ payload: any() });
 expectTypeOf<InferOutputOf<typeof requiredPayloadValidator>>().toEqualTypeOf<{
