@@ -485,18 +485,18 @@ pnpm install --frozen-lockfile
 pnpm check
 ```
 
-`pnpm check` runs formatting, linting, TypeScript checks (including `types.test-d.ts` with `exactOptionalPropertyTypes`), runtime tests, and a package smoke test. The smoke test packs the library, checks its file list, imports it from an isolated consumer, and type-checks that consumer against the emitted declarations.
+`pnpm check` runs formatting, linting, TypeScript checks (including `types.test-d.ts` with `exactOptionalPropertyTypes`), runtime tests, and a build followed by [publint](https://publint.dev/). Publint checks the package exports, module formats, and published files; warnings fail the check.
 
 ```sh
 pnpm format       # Apply formatting
 pnpm test         # Runtime tests
 pnpm typecheck    # Source and test types
 pnpm build        # ESM and declarations in dist/
-pnpm test:package # Build and test the tarball
+pnpm lint:package # Build and validate package metadata and files
 pnpm pack         # Build and create a publishable tarball
 ```
 
-The build uses TypeScript directly; the package has no runtime dependencies. The `prepack` hook builds the package before packing or publishing. GitHub CI validates changes without publishing to npm.
+The library has one source entry point, so the build uses TypeScript directly to emit ESM and declarations. The package has no runtime dependencies. The `prepack` hook builds the package before packing or publishing. GitHub CI validates changes without publishing to npm.
 
 For releases before 1.0, increment the minor version for breaking changes and the patch version for compatible fixes.
 

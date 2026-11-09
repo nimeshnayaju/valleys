@@ -22,13 +22,13 @@
   "scripts": {
     "build": "node --input-type=module -e \"import { rmSync } from 'node:fs'; rmSync('dist', { recursive: true, force: true });\" && tsc -p tsconfig.build.json",
     "test": "vitest run",
-    "test:package": "pnpm build && node scripts/check-package.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:package",
-    "prepack": "pnpm build"
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm lint:package",
+    "prepack": "pnpm build",
+    "lint:package": "pnpm build && publint --strict"
   },
   "engines": {
     "node": ">=22.12.0"
@@ -37,6 +37,7 @@
     "@types/node": "^24.19.2",
     "oxfmt": "^0.72.0",
     "oxlint": "^1.87.0",
+    "publint": "^0.3.25",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5"
   }
