@@ -1,0 +1,7 @@
+minimumReleaseAge: 1440
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  # Vitest dependency: 3.2.2 predates the provenance attached to 3.2.0 and 3.2.1.
+  - why-is-node-running@3.2.2
+allowBuilds:
+  esbuild: false

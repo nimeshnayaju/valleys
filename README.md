@@ -1,4 +1,4 @@
-Lightweight, zero-dependency library for validating arbitrary runtime data in TypeScript. `valleys` provides assertion-based validation that refines your types in-place — no cloning, no transformations, and minimal runtime overhead.
+Lightweight, zero-dependency library for validating runtime wire data in TypeScript. `valleys` provides assertion-based validation that refines your types in-place — no cloning, no transformations, and minimal runtime overhead.
 
 ## Table of Contents
 
@@ -15,18 +15,23 @@ Lightweight, zero-dependency library for validating arbitrary runtime data in Ty
   - [`constant()`](#constant)
   - [`any()`](#any)
   - [`null_()`](#null_)
-  - [`iso8601()`](#iso8601)
+  - [`dateTime()`](#datetime)
   - [`array()`](#array)
   - [`object()`](#object)
+  - [`record()`](#record)
   - [`optional()`](#optional)
   - [`or()`](#or)
 - [Exported types](#exported-types)
   - [`InferOutputOf<D>`](#inferoutputofd)
   - [`AnyValue`](#anyvalue)
-  - [`Iso8601`](#iso8601-1)
+  - [`DateTimeString`](#datetimestring)
+  - [`UrlString`](#urlstring)
+- [Development](#development)
 - [Acknowledgements](#acknowledgements)
 
 ### Installation
+
+Requires Node.js 22.12+ and ESM imports.
 
 ```bash
 npm install valleys
@@ -59,26 +64,28 @@ Libraries like [Zod](https://zod.dev/), [Valibot](https://valibot.dev/), [Decode
 
 - **[`valleys` vs `zod` vs `valibot`](https://github.com/nimeshnayaju/valibot-benchmarks?tab=readme-ov-file#relative-performance-valleys-vs-others)** - Compares Valleys against Zod 4 and Valibot across different environments (Node.js, Bun, Deno) - forked from benchmarks maintained by [@naruaway](https://github.com/naruaway).
 
-These early benchmarks suggest that `valleys` consistently outperforms other validation libraries like Zod and Valibot across all scenarios. For basic validation like strings and numbers, `valleys` is about 1.5-2x faster than Zod 4. However, the real performance gains become apparent when you add validation rules - `valleys` becomes dramatically faster, often 20-30x faster than alternatives when checking things like string length limits, number ranges, or array sizes.
+These historical benchmarks cover earlier versions. They have not been rerun for 0.5.0.
 
 ### Error handling
 
-When validation fails, `valleys` takes an equally thoughtful approach. Rather than being prescriptive about error formatting, it exposes a structured error system with an AST-like path that precisely indicates where validation failed. It does include a sensible default error message for debugging, but you can also traverse the error path to build whatever error handling approach fits your application - from simple logging to sophisticated user-facing messages.
-
-The `validate` function throws a `ValidationError` if validation fails; you can catch this error and traverse its `root` property to build custom error handling:
+The `validate` function throws a `ValidationError` on the first failure. Its `cause` describes the failing input and the path from the root value to that input.
 
 ```ts
-import { validate, object, string, number } from "valleys";
+import { validate, object, array, string, ValidationError } from "valleys";
 
 try {
-  validate(input, object({ name: string(), age: number() }));
+  validate({ names: ["Ada", 42] }, object({ names: array(string()) }));
 } catch (error) {
   if (error instanceof ValidationError) {
-    // Access the structured error tree
-    console.log(error.experimental_root);
+    console.log(error.cause.path); // ["names", 1]
+    console.log(error.cause.input); // 42
+    console.log(error.cause.type); // "schema-mismatch"
+    console.log(error.cause.schema); // { type: "string" }
   }
 }
 ```
+
+A failure has `type`, `path`, `input`, `schema`, and `rules`. When `type` is `"rule-violation"`, it also has a `rule` name, such as `"maxLength"`. The previous `experimental_root` error tree was removed in 0.5.0.
 
 **Example error message:**
 
@@ -108,8 +115,8 @@ validate(input, string({ minLength: 3, maxLength: 50 }));
 
 **Rules:**
 
-- `minLength?: number` - Minimum string length
-- `maxLength?: number` - Maximum string length
+- `minLength?: number` - Minimum string length in UTF-16 code units
+- `maxLength?: number` - Maximum string length in UTF-16 code units
 
 #### `number()`
 
@@ -165,7 +172,9 @@ validate(input, boolean());
 
 #### `url()`
 
-Valides that a string is a valid URL.
+Validates absolute URL strings that already equal `new URL(input).href`. For example, `"https://example.com/"` passes, while `"https://example.com"`, leading whitespace, and hostnames needing normalization fail. Validation does not transform the input.
+
+Any scheme is accepted, including `javascript:`; check the protocol separately when using a URL in a context that requires one.
 
 ```ts
 import { url, validate } from "valleys";
@@ -206,7 +215,7 @@ import { any, object, optional, string, validate } from "valleys";
 const Event = object({
   type: string(),
   payload: any(),
-  metadata: optional(any()),
+  metadata: optional(any())
 });
 
 validate(input, Event);
@@ -229,15 +238,15 @@ validate(input, null_());
 // input is typed as null
 ```
 
-#### `iso8601()`
+#### `dateTime()`
 
-Validates that a value is a valid ISO 8601 datetime string with timezone.
+Validates RFC 3339 date-time strings: `YYYY-MM-DDTHH:mm:ss[.fraction](Z|±HH:mm)`. Fields and calendar dates must be valid, including leap years. Lowercase `t` and `z` are allowed. Leap seconds, date-only strings, and timezone offsets without a colon are rejected.
 
 ```ts
-import { iso8601, validate } from "valleys";
+import { dateTime, validate } from "valleys";
 
-validate(input, iso8601());
-// input is typed as Iso8601String (a branded string type)
+validate(input, dateTime());
+// input is typed as DateTimeString (a branded string type)
 
 // Valid examples:
 // "2024-01-15T10:30:00Z"
@@ -275,6 +284,9 @@ validate(input, array(number(), { minLength: 3 }));
 **Rules:**
 
 - `minLength?: number` - Minimum array length
+- `maxLength?: number` - Maximum array length
+
+Array length rules are checked before the items.
 
 #### `object()`
 
@@ -286,10 +298,6 @@ import { object, optional, string, number, boolean, validate } from "valleys";
 // Any object
 validate(input, object());
 // input is typed as Record<string, AnyValue>
-
-// String-valued record
-validate(input, object(string()));
-// input is typed as Record<string, string>
 
 // Object with specific shape
 validate(input, object({ id: number(), name: string(), active: boolean() }));
@@ -305,10 +313,21 @@ validate(
   object({
     user: object({
       id: number(),
-      profile: object({ name: string(), age: number() }),
-    }),
-  }),
+      profile: object({ name: string(), age: number() })
+    })
+  })
 );
+```
+
+#### `record()`
+
+Validates a plain object or null-prototype dictionary whose own enumerable string-keyed values all pass the supplied validator. This replaces the `object(valueValidator)` overload from 0.4.x.
+
+```ts
+import { record, string, validate } from "valleys";
+
+validate(input, record(string()));
+// input is typed as Record<string, string>
 ```
 
 ### Object property presence
@@ -318,7 +337,7 @@ In Valleys, object fields are required by default:
 ```ts
 object({
   id: string(),
-  name: string(),
+  name: string()
 });
 ```
 
@@ -327,7 +346,7 @@ Use `optional(...)` when a key may be absent:
 ```ts
 object({
   id: string(),
-  nickname: optional(string()),
+  nickname: optional(string())
 });
 ```
 
@@ -341,7 +360,7 @@ This means the key may be absent. If the key is present, the value must pass the
 const Event = object({
   type: string(),
   payload: any(),
-  metadata: optional(any()),
+  metadata: optional(any())
 });
 
 // This infers:
@@ -360,27 +379,29 @@ Marks an object field as optional, meaning the property may be absent. It is an 
 import { null_, object, optional, or, string } from "valleys";
 
 const KnownOptional = object({
-  name: optional(string()),
+  name: optional(string())
 });
 // { name?: string }
 
 const Nullable = object({
-  name: or([string(), null_()]),
+  name: or([string(), null_()])
 });
 // { name: string | null }
 
 const OptionalNullable = object({
-  name: optional(or([string(), null_()])),
+  name: optional(or([string(), null_()]))
 });
 // { name?: string | null }
 ```
 
 #### `or()`
 
-Creates a union type validator that accepts any of the provided validators.
+Creates a union type validator that accepts any of the provided validators. When all branches are objects with a distinct required constant at the same property, that property selects the branch to validate. Errors retain the selected branch's path. For other unions, a failure is preserved when exactly one branch matched the input type; otherwise the union reports a schema mismatch.
+
+Its schema is `{ type: "or", options: [...] }`. Schema metadata describes Valleys validators; it is not JSON Schema.
 
 ```ts
-import { or, string, number, null_, validate } from "valleys";
+import { or, string, number, null_, constant, validate } from "valleys";
 
 // String or number
 validate(input, or([string(), number()]));
@@ -402,7 +423,7 @@ validate(input, or([constant("pending"), constant("active"), constant("completed
 A type utility that extracts the output type from a validator. Useful when you need to reference the type that a validator validates.
 
 ```ts
-import { object, string, number, InferOutputOf } from "valleys";
+import { object, string, number, type InferOutputOf } from "valleys";
 
 const userValidator = object({ id: number(), name: string() });
 type User = InferOutputOf<typeof userValidator>;
@@ -416,25 +437,25 @@ Represents any value except `undefined` at the TypeScript level.
 `AnyValue = {} | null` means "anything except `undefined`" under strict null checks. It intentionally does not recursively prove JSON compatibility. It may include non-JSON JavaScript values if those values are passed directly to a validator; Valleys assumes inputs normally come from decoded wire data, while `any()` itself only rejects `undefined`.
 
 ```ts
-import { AnyValue } from "valleys";
+import { type AnyValue } from "valleys";
 
 type Payload = AnyValue; // {} | null
 ```
 
-#### `Iso8601String`
+#### `DateTimeString`
 
-A branded string type for ISO 8601 date strings that can only be obtained after validating using the `iso8601` validator.
+A branded string type for RFC 3339 date-time strings that can only be obtained after validating using the `dateTime` validator.
 
 ```ts
-import { Iso8601String, iso8601, validate } from "valleys";
+import { type DateTimeString, dateTime, validate } from "valleys";
 
-function formatDate(date: Iso8601String): string {
+function formatDate(date: DateTimeString): string {
   return new Date(date).toLocaleDateString();
 }
 
 const input = "2024-01-01T12:00:00Z";
-validate(input, iso8601());
-// input is now Iso8601String
+validate(input, dateTime());
+// input is now DateTimeString
 formatDate(input);
 ```
 
@@ -443,7 +464,7 @@ formatDate(input);
 A branded string type for valid URL strings that can only be obtained after validating using the `url` validator.
 
 ```ts
-import { UrlString, url, validate } from "valleys";
+import { type UrlString, url, validate } from "valleys";
 
 function parseUrl(value: UrlString): URL {
   return new URL(value);
@@ -454,6 +475,30 @@ validate(input, url());
 // input is now UrlString
 const parsed = parseUrl(input);
 ```
+
+### Development
+
+Use Node.js 24 (the exact local version is in `.node-version`) and pnpm 12.11.2 (pinned in `package.json`). CI also checks the minimum supported Node.js version, 22.12.0.
+
+```sh
+pnpm install --frozen-lockfile
+pnpm check
+```
+
+`pnpm check` runs formatting, linting, TypeScript checks (including `types.test-d.ts` with `exactOptionalPropertyTypes`), runtime tests, and a package smoke test. The smoke test packs the library, checks its file list, imports it from an isolated consumer, and type-checks that consumer against the emitted declarations.
+
+```sh
+pnpm format       # Apply formatting
+pnpm test         # Runtime tests
+pnpm typecheck    # Source and test types
+pnpm build        # ESM and declarations in dist/
+pnpm test:package # Build and test the tarball
+pnpm pack         # Build and create a publishable tarball
+```
+
+The build uses TypeScript directly; the package has no runtime dependencies. The `prepack` hook builds the package before packing or publishing. GitHub CI validates changes without publishing to npm.
+
+For releases before 1.0, increment the minor version for breaking changes and the patch version for compatible fixes.
 
 ### Acknowledgements
 

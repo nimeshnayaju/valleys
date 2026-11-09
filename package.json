@@ -1,35 +1,43 @@
 {
-	"name": "valleys",
-	"description": "A lightweight TypeScript library for validating arbitrary runtime data.",
-	"version": "0.4.1",
-	"license": "MIT",
-	"type": "module",
-	"sideEffects": false,
-	"exports": {
-		".": {
-			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
-		}
-	},
-	"files": [
-		"dist"
-	],
-	"scripts": {
-		"build": "bunchee",
-		"test": "vitest run",
-		"typecheck": "vitest --typecheck.only",
-		"lint": "biome lint",
-		"format": "biome format --write",
-		"check": "biome check"
-	},
-	"engines": {
-		"node": ">=18"
-	},
-	"devDependencies": {
-		"@biomejs/biome": "^2.4.5",
-		"@types/node": "^20.19.10",
-		"bunchee": "^6.9.4",
-		"typescript": "^5.9.3",
-		"vitest": "^4.0.18"
-	}
+  "name": "valleys",
+  "description": "A lightweight TypeScript library for validating runtime wire data.",
+  "version": "0.5.0",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nimeshnayaju/valleys.git"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "packageManager": "pnpm@12.11.2",
+  "scripts": {
+    "build": "node --input-type=module -e \"import { rmSync } from 'node:fs'; rmSync('dist', { recursive: true, force: true });\" && tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "test:package": "pnpm build && node scripts/check-package.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:package",
+    "prepack": "pnpm build"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "oxfmt": "^0.72.0",
+    "oxlint": "^1.87.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
 }
